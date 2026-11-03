@@ -114,14 +114,22 @@ export default function PersonalDataScreen(){
 };
 
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
   },
-  text: {
-    fontSize: 16,
+  content: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  subtitle: {
+    fontSize: 14,
     color: colors.textSoft,
+    marginTop: 4,
+    marginBottom: 20,
   },
 });
