@@ -21,7 +21,7 @@ export default function PersonalDataScreen(){
   const { personal, updatePersonal, personalErrors, getError } = useRegister();
 
   //Error de un campo: solo se muestra  si ya lo tocó o si lo intentó enviar 
-  const  errorOF  = (field) => getError(personalErrors,field);
+  const  errorOf  = (field) => getError(personalErrors,field);
 
   // El idioma es una preferencia: además del registro, se guarda   en AsyncStorage
   function handleLanguage(value) {
