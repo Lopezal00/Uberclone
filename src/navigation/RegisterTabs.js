@@ -1,12 +1,14 @@
 // Navegación Tab del registro: Datos personales, Vehículo y Documentos.
 // AI-assisted: see docs/AI_LOG.md #1
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { BottomTabBar, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import PersonalDataScreen from '../screens/register/PersonalDataScreen';
 import VehicleScreen from '../screens/register/VehicleScreen';
 import DocumentsScreen from '../screens/register/DocumentsScreen';
+import SubmitRegistrationBar from '../components/register/SubmitRegistrationBar';
+import { useRegister } from '../context/RegisterContext';
 import { colors } from '../theme/colors';
 
 // CONCEPTO: la constante se llama Tab, como en la documentación
@@ -20,14 +22,36 @@ const ICONS = {
 };
 
 export default function RegisterTabs() {
+  // AI-assisted: see docs/AI_LOG.md #3
+  const { isPersonalValid, isVehicleValid, setShowAllErrors } = useRegister();
+
+  // Temporal: por ahora el botón solo muestra todos los errores.
+  // Al integrar con la rama de Sara, se conecta con useRegisterSubmit (envío real).
+  const submit = () => setShowAllErrors(true);
+
+  // Una pestaña completa y válida muestra un check verde en lugar de su ícono
+  const isComplete = { PersonalData: isPersonalValid, Vehicle: isVehicleValid, Documents: false };
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSoft,
-        tabBarIcon: ({ color, size }) => <Ionicons name={ICONS[route.name]} size={size} color={color} />,
+        tabBarIcon: ({ color, size }) =>
+          isComplete[route.name] ? (
+            <Ionicons name="checkmark-circle" size={size} color={colors.accent} />
+          ) : (
+            <Ionicons name={ICONS[route.name]} size={size} color={color} />
+          ),
       })}
+      // El botón Enviar registro va justo encima de la barra de pestañas, en todas las pestañas
+      tabBar={(props) => (
+        <>
+          <SubmitRegistrationBar onSubmit={submit} loading={false} submitError="" />
+          <BottomTabBar {...props} />
+        </>
+      )}
     >
       <Tab.Screen name="PersonalData" component={PersonalDataScreen} options={{ title: 'Datos personales' }} />
       <Tab.Screen name="Vehicle" component={VehicleScreen} options={{ title: 'Vehículo' }} />

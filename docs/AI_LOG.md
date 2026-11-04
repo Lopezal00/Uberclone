@@ -59,6 +59,129 @@ Dependencias. No ejecutar npm audit fix --force, porque cambia versiones y rompe
 Organización. Separar el proyecto en carpetas por responsabilidad (services, context, components, utils) para poder trabajar en paralelo sin chocar
 
 ---
+## #3 — Pestaña Datos personales y botón Enviar registro
+
+- **Fecha:** 2026-11-03
+- **Integrante:** Camilo López Alzate
+- **Herramienta:** Claude Code (Claude Opus 5.5) en VS Code
+- **Objetivo:** Que me guíen para construir la Pestaña 1 (datos personales) con validaciones y estado compartido, y una barra fija con el botón **Enviar registro** que solo se habilite cuando las pestañas estén completas. La idea es entender las decisiones y escribir yo el código.
+
+- **Prompt:**
+
+> "Hola. Estoy haciendo una app en React Native (Expo) y me toca la pantalla `PersonalDataScreen`, que es la Pestaña 1 de un registro de varios pasos, y además el botón para enviar el registro. **No quiero que me des el código completo.** Quiero que me guíes paso a paso, me expliques el porqué de cada decisión y me hagas preguntas para saber si entendí. Si hace falta, dame fragmentos pequeños o pseudocódigo, nunca el archivo entero.
+>
+> **Parte A: campos de la pantalla (todos obligatorios):**
+> 1. Foto de perfil (redonda, con el texto de ayuda 'una foto clara de tu cara, sin gafas oscuras').
+> 2. Nombre completo (máximo 50 caracteres, con mayúscula inicial en cada palabra).
+> 3. Documento de identidad (solo números, entre 6 y 10 dígitos).
+> 4. Número de celular (solo números, 10 dígitos).
+> 5. Fecha de nacimiento (no puede ser futura ni anterior a 1940).
+> 6. Género (lista de opciones).
+> 7. Correo electrónico (sin espacios, sin autocorrección, en minúsculas).
+> 8. Idioma (lista de opciones). Este además se debe guardar como preferencia en AsyncStorage.
+>
+> **Parte B: botón Enviar registro:**
+> - Debe verse en **todas** las pestañas, justo encima de la barra de pestañas.
+> - Solo se habilita cuando Datos personales y Vehículo son válidos (en la entrega final se suma Documentos).
+> - Si está deshabilitado, debe decirle al conductor qué le falta, por ejemplo 'Completa Vehículo'.
+> - Debe poder mostrar un indicador de carga y un mensaje de error de envío.
+> - Por ahora el envío real no existe (lo hace otra compañera en su rama). Mientras tanto, al tocar el botón solo deben aparecer todos los errores.
+> - Una pestaña completa debería mostrar un check verde en lugar de su ícono.
+>
+> **Lo que ya tengo o pienso tener:**
+> - Componentes en `components/form/`: `FormField`, `DateField`, `SelectField` e `ImageField`, y un `AppButton` con props `disabled` y `loading`.
+> - Las constantes `GENDERS` y `LANGUAGES` en `constants/options.js`, y las claves en `constants/storageKeys.js`.
+> - Un contexto `RegisterContext`, los validadores en `utils/validators.js`, `saveData` en `services/asyncStorage.js` y los colores en `theme/colors.js`.
+> - La navegación por pestañas en `navigation/RegisterTabs.js`.
+>
+> **Mis dudas:**
+> 1. ¿Guardo los datos en un `useState` local de la pantalla o en el contexto? Si cambio de pestaña y vuelvo, ¿se pierden con `useState`?
+> 2. ¿Cómo diseño el contexto? Pensaba exponer `personal`, `updatePersonal(campo, valor)`, los errores e `isPersonalValid`. ¿Una función genérica para actualizar o una por campo?
+> 3. ¿Dónde viven las validaciones? ¿Cómo hago que un error **solo aparezca si el usuario ya tocó el campo o intentó enviar**? ¿Sirve una bandera como `showAllErrors`?
+> 4. Si uso `keyboardType='number-pad'`, ¿el usuario igual puede pegar letras? ¿Cómo dejo solo los dígitos?
+> 5. ¿El `trim()` del correo va al escribir o al validar?
+> 6. ¿Cómo pongo los límites de la fecha en el date picker? ¿Guardo un `Date` o un string?
+> 7. Para guardar el idioma en AsyncStorage, ¿llamo a `saveData` en el `onChange` o uso un `useEffect`?
+> 8. ¿Cómo combino `KeyboardAvoidingView` con `ScrollView` para que el teclado no tape los campos? ¿Por qué el `behavior` cambia entre iOS y Android? ¿Para qué sirve `keyboardShouldPersistTaps`?
+> 9. Para la foto, ¿qué librería me recomiendas y qué permisos necesito?
+> 10. Para que el botón salga en todas las pestañas, ¿lo pongo dentro de cada pantalla o uso la prop `tabBar` del navegador? ¿Qué pasa con `BottomTabBar` si personalizo `tabBar`?
+> 11. ¿Calculo `isPersonalValid` en el contexto o en el componente del botón? ¿Cómo evito recalcularlo de más?
+> 12. ¿Cómo dejo el botón listo para conectarlo después con el envío real (por ejemplo con props `onSubmit`, `loading` y `submitError`) sin tener que reescribirlo?
+>
+> **Cómo quiero que me guíes:**
+> - Primero un plan corto con el orden de construcción (contexto, validadores, un campo funcionando, el resto de los campos, la barra de envío, el check en las pestañas).
+> - De a un paso, con 1 o 2 preguntas de comprobación al final de cada uno.
+> - Avísame si estoy cometiendo un error típico (estado duplicado, validar de más, re-renders innecesarios).
+> - Al final, una lista de chequeo de pruebas manuales: casos válidos, inválidos y extremos."
+
+- **Resumen de la respuesta:** La IA propuso guardar todo en `RegisterContext` y no en `useState` local, para no perder datos al cambiar de pestaña. Recomendó una función genérica `updatePersonal(campo, valor)` y validadores puros en `validators.js`. Desde el contexto se calculan `personalErrors` e `isPersonalValid`, y hay un `getError` que solo devuelve el error si el campo fue tocado o si `showAllErrors` está activo. Recomendó filtrar los dígitos con una regex porque `keyboardType` no impide pegar texto, y guardar el idioma directamente en el handler. Para el botón sugirió un componente aparte, `SubmitRegistrationBar`, que lee la validez del contexto y recibe `onSubmit`, `loading` y `submitError` por props. Se monta con la prop `tabBar` del navegador, envolviendo a `BottomTabBar`. Para el check en las pestañas propuso un objeto `isComplete` que se consulta dentro de `tabBarIcon`.
+- **Enlace:** 
+- **Qué se usó / modificó / descartó:**
+  - **Usado:** el estado en el contexto con `updatePersonal`; `onlyDigits` con `/[^0-9]/g`; `errorOf(field)` sobre `getError`; los límites de fecha con `maximumDate` y `minimumDate`; `saveData` dentro de `handleLanguage`; `SubmitRegistrationBar` con props pensadas para la integración; la prop `tabBar` con `BottomTabBar`; el check verde con `isComplete`.
+  - **Modificado:** el `trim()` del correo quedó en `onChangeText`. El envío quedó temporal (`setShowAllErrors(true)`) hasta integrar `useRegisterSubmit` de la rama de Sara.
+  - **Descartado:** el `useEffect` para persistir el idioma, el `useState` local por campo y poner el botón dentro de cada pantalla (se repetía en las tres).
+- **Archivos y commit:**
+  - `src/screens/register/PersonalDataScreen.js`
+  - `src/components/register/SubmitRegistrationBar.js`
+  - `src/navigation/RegisterTabs.js` (validez de las pestañas, `tabBar` y botón temporal)
+  - También se apoya en `src/context/RegisterContext.js` y `src/utils/validators.js`
+  - Commit: (personaldatascreen 'ee005b6'),  86e10c1 Componente de la barra Enviar Registro, af5d7da Barra de enviar registro e indicador de pestañas completa
+- **Verificación:**
+  - Al abrir la pantalla no se ve ningún error. Al salir de un campo vacío aparece su error.
+  - Pegar letras en documento o celular deja solo los números. Un correo con espacios queda limpio, y uno sin `@` da error.
+  - El date picker no permite fechas futuras ni anteriores a 1940.
+  - Los datos se conservan al cambiar de pestaña. El idioma sigue guardado después de reiniciar la app.
+  - Con el teclado abierto se llega al último campo, tanto en iOS como en Android.
+  - El botón aparece en las tres pestañas y está deshabilitado con el mensaje correcto: 'Completa Datos personales y Vehículo', 'Completa Datos personales' o 'Completa Vehículo'.
+  - Al tocar Enviar se muestran todos los errores. Al completar una pestaña, su ícono cambia a un check verde.
+- **Aprendizaje:** Entendí el estado compartido con `useContext` en un formulario de varios pasos y por qué las validaciones conviene tenerlas como funciones puras. Mostrar los errores solo en los campos tocados mejora la experiencia de usuario. Con la prop `tabBar` se agrega contenido común a todas las pestañas. Si un componente recibe todo por props, después se puede conectar con la lógica real sin reescribirlo.
+
+## #2 — Navegación por pestañas del registro
+
+- **Fecha:** 3/11/2026
+- **Integrante:** Camilo López Alzate
+- **Herramienta:** Claude Code (Claude Opus 5.5) en VS Code
+- **Objetivo:** Que me guíen para montar la navegación del registro con tres pestañas (Datos personales, Vehículo y Documentos) usando React Navigation, entendiendo cómo se configura en vez de copiar un ejemplo.
+
+- **Prompt:**
+
+> "Hola. En mi app de React Native (Expo) tengo que hacer el registro de un conductor dividido en tres pestañas: **Datos personales**, **Vehículo** y **Documentos**. **No quiero que me des el código completo.** Quiero que me guíes paso a paso, me expliques el porqué y me hagas preguntas para comprobar que entendí. Si hace falta, dame fragmentos pequeños, no el archivo entero.
+>
+> **Lo que necesito:**
+> 1. Un navegador de pestañas inferior con las tres pantallas.
+> 2. Un ícono para cada pestaña (estoy usando `@expo/vector-icons`, Ionicons).
+> 3. Colores de pestaña activa e inactiva tomados de mi archivo `theme/colors.js`.
+> 4. Sin header en las pantallas, porque cada una tiene su propio título.
+> 5. Nombres internos de ruta en inglés (`PersonalData`, `Vehicle`, `Documents`) y títulos visibles en español.
+>
+> **Mis dudas:**
+> 1. ¿Qué paquetes tengo que instalar para `createBottomTabNavigator` en Expo y por qué se usa `npx expo install` en vez de `npm install`?
+> 2. ¿Dónde va el `NavigationContainer`: en este archivo o en `App.js`? ¿Qué pasa si pongo dos?
+> 3. ¿Cuál es la diferencia entre pasar las opciones a cada `Tab.Screen` y usar `screenOptions` en el `Tab.Navigator`? ¿Por qué `screenOptions` puede ser una función que recibe `route`?
+> 4. ¿Cómo elijo el ícono según la pestaña sin escribir un `if` por cada una? ¿Me sirve un objeto que relacione el nombre de la ruta con el ícono?
+> 5. ¿Qué son el `color` y el `size` que recibe `tabBarIcon` y por qué conviene usarlos en vez de poner valores fijos?
+> 6. Si más adelante quiero poner algo fijo encima de la barra de pestañas (un botón que se vea en todas), ¿qué opciones tengo?
+>
+> **Cómo quiero que me guíes:**
+> - Primero un plan corto con el orden de los pasos.
+> - De a un paso, con 1 o 2 preguntas de comprobación al final de cada uno.
+> - Avísame si estoy cometiendo un error típico de React Navigation.
+> - Al final, una lista de chequeo para probar la navegación a mano."
+
+- **Resumen de la respuesta:** La IA explicó cómo instalar `@react-navigation/bottom-tabs` y sus dependencias con `npx expo install`, y que el `NavigationContainer` debe estar una sola vez, en la raíz de la app. Recomendó usar `screenOptions` como función de `route` para centralizar los íconos y colores, con un objeto `ICONS` que relaciona el nombre de la ruta con el ícono. Explicó que `color` y `size` vienen del navegador y cambian según la pestaña esté activa o no. Para el contenido fijo sobre la barra, mencionó la prop `tabBar`, que permite envolver a `BottomTabBar`.
+- **Enlace:** 
+- **Qué se usó / modificó / descartó:**
+  - **Usado:** `createBottomTabNavigator` en una constante `Tab`; `screenOptions` como función con `headerShown: false`; el objeto `ICONS`; `tabBarActiveTintColor` y `tabBarInactiveTintColor` desde `colors`; los títulos en español con `options.title`.
+  - **Descartado:** definir un `tabBarIcon` en cada `Tab.Screen` (se repetía mucho código).
+- **Archivos y commit:**
+  - `src/navigation/RegisterTabs.js`
+  - Commit: 
+- **Verificación:** Se ven las tres pestañas con su ícono y su título en español. El color cambia al tocar cada una. No aparece header duplicado. Al cambiar de pestaña no hay errores en la consola.
+- **Aprendizaje:** Aprendí la estructura `Navigator` / `Screen` de React Navigation y que el contenedor va una sola vez. Con `screenOptions` como función se evita repetir código. Conviene separar el nombre interno de la ruta del título que ve el usuario.
+
+
+
+
 
 <!-- Plantilla para copiar en cada nueva entrada:
 
