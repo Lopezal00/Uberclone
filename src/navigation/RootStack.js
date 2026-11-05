@@ -1,4 +1,4 @@
-// Navegación Stack principal. Por ahora: registro y cuenta pendiente.
+// Navegación Stack principal. Por ahora: Bienvenidad, registro y cuenta pendiente.
 // En la entrega final aquí  agregariamos el Drawer y el flujo del viaje.
 // AI-assisted: see docs/AI_LOG.md #1
 import React, { useEffect, useState } from 'react';
@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import RegisterTabs from './RegisterTabs';
+import WelcomeScreen from '../screens/WelcomeScreens';
 import PendingApprovalScreen from '../screens/PendingApprovalScreen';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { getData } from '../services/asyncStorage';
@@ -22,7 +23,8 @@ export default function RootStack() {
   useEffect(() => {
     async function checkSession() {
       const driverId = await getData(STORAGE_KEYS.DRIVER_ID);
-      setInitialRoute(driverId ? 'PendingApproval' : 'Register');
+      // AI-assisted: see docs/AI_LOG.md #6 (sin sesión ahora abre la bienvenida)
+      setInitialRoute(driverId ? 'PendingApproval' : 'Welcome');
     };
     checkSession();
   }, []);
@@ -37,6 +39,7 @@ export default function RootStack() {
 
   return (
     <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerTitleAlign: 'center' }}>
+      <Stack.Screen name= 'Welcome' component={WelcomeScreen} options={{headerShown: false}}/>
       <Stack.Screen name="Register" component={RegisterTabs} options={{ title: 'Registro del conductor' }} />
       <Stack.Screen
         name="PendingApproval"

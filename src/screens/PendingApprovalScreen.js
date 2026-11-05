@@ -65,10 +65,10 @@ export default function PendingApprovalScreen() {
     };
   }, []);
 
-  // Solo para pruebas: borra la sesión y vuelve al registro
+  // Solo para pruebas: borra la sesión y vuelve a la bienvenidad
   async function registerAgain() {
     await removeData(STORAGE_KEYS.DRIVER_ID);
-    navigation.reset({ index: 0, routes: [{ name: 'Register' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
   };
 
   if (loading) {
