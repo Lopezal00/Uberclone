@@ -1,7 +1,7 @@
 // Servicio de base de datos para los conductores (colección drivers en Firestore).
 // Separado del servicio de imágenes: este solo habla con la base de datos.
 // AI-assisted: see docs/AI_LOG.md #1
-import { collection, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { DRIVER_STATUS } from '../constants/options';
 
@@ -33,3 +33,11 @@ export const getDriver = async (driverId) => {
 export const updateDriverStatus = async (driverId, status) => {
   await updateDoc(doc(db, DRIVERS, driverId), { status });
 };
+
+// AI-assisted: see docs/AI_LOG.md #3
+// CONCEPTO: tiempo real con onSnapshot. Avisa cada vez que cambia el conductor en Firestore.
+// Devuelve la función para cancelar la suscripción (se usa en la limpieza del useEffect).
+export const listenDriver = (driverId, onChange) =>
+  onSnapshot(doc(db, DRIVERS, driverId), (snap) => {
+    onChange(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  });
