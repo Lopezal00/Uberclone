@@ -4,20 +4,34 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import useAnnounceError from '../../hooks/useAnnounceError';
 import { colors } from '../../theme/colors';
 
-export default function FormField({ label, error, value, onChangeText, ...inputProps }) {
+// ref: se pasa al TextInput para poder enfocar el campo desde la pantalla (botón Siguiente del teclado)
+export default function FormField({ label, error, value, onChangeText, ref, ...inputProps }) {
+  useAnnounceError(error);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {/* La etiqueta visual ya la lee el TextInput, así que se oculta para VoiceOver */}
+      <Text style={styles.label} importantForAccessibility="no" accessibilityElementsHidden>
+        {label}
+      </Text>
       <TextInput
+        ref={ref}
         style={[styles.input, error ? styles.inputError : null]}
         value={value}
         onChangeText={onChangeText}
         placeholderTextColor={colors.textSoft}
+        accessibilityLabel={label}
+        accessibilityHint={error || undefined}
         {...inputProps}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -33,7 +47,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    height: 48,
+    // minHeight (no height) para que el texto no se corte con letra grande (Dynamic Type)
+    minHeight: 48,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,

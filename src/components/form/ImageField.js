@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
+import useAnnounceError from '../../hooks/useAnnounceError';
 import { colors } from '../../theme/colors';
 
 const PICKER_OPTIONS = { mediaTypes: ['images'], quality: 0.6, allowsEditing: true };
@@ -29,33 +30,58 @@ export default function ImageField({ label, hint, error, value, onChange, round 
   };
 
   const message = permissionError || error;
+  useAnnounceError(message);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} accessibilityRole="header">{label}</Text>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
 
       <View style={styles.row}>
         {/* CONCEPTO: Image remota o local con width y height explícitos */}
         {value ? (
-          <Image source={{ uri: value }} style={[styles.preview, round && styles.round]} />
+          <Image
+            source={{ uri: value }}
+            style={[styles.preview, round && styles.round]}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={`${label}: foto seleccionada`}
+          />
         ) : (
-          <View style={[styles.preview, styles.empty, round && styles.round, message ? styles.emptyError : null]}>
+          <View
+            style={[styles.preview, styles.empty, round && styles.round, message ? styles.emptyError : null]}
+            accessible
+            accessibilityLabel={`${label}: sin foto`}
+          >
             <Text style={styles.emptyText}>Sin foto</Text>
           </View>
         )}
 
         <View style={styles.buttons}>
-          <Pressable onPress={takePhoto} style={({ pressed }) => [styles.smallButton, pressed && styles.pressed]}>
+          <Pressable
+            onPress={takePhoto}
+            accessibilityRole="button"
+            accessibilityLabel={`Tomar foto. ${label}`}
+            style={({ pressed }) => [styles.smallButton, pressed && styles.pressed]}
+          >
             <Text style={styles.smallButtonText}>Tomar foto</Text>
           </Pressable>
-          <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.smallButton, pressed && styles.pressed]}>
+          <Pressable
+            onPress={pickFromGallery}
+            accessibilityRole="button"
+            accessibilityLabel={`Elegir de la galería. ${label}`}
+            style={({ pressed }) => [styles.smallButton, pressed && styles.pressed]}
+          >
             <Text style={styles.smallButtonText}>Elegir de la galería</Text>
           </Pressable>
         </View>
       </View>
 
-      {message ? <Text style={styles.error}>{message}</Text> : null}
+      {message ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {message}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -111,8 +137,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
     borderRadius: 10,
+    // Área táctil mínima de 44 pt (Human Interface Guidelines)
+    minHeight: 44,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.surface,
   },
   pressed: {

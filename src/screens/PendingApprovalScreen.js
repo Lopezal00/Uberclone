@@ -99,7 +99,12 @@ export default function PendingApprovalScreen() {
             {isApproved ? 'Se activa en la pantalla de inicio (entrega final).' : 'Bloqueado hasta que tu cuenta sea aprobada.'}
           </Text>
         </View>
-        <Switch value={false} disabled />
+        <Switch
+          value={false}
+          disabled
+          accessibilityLabel="Disponible"
+          accessibilityHint={isApproved ? 'Se activa en la pantalla de inicio.' : 'Bloqueado hasta que tu cuenta sea aprobada.'}
+        />
       </View>
 
       <AppButton title="Registrar otro conductor (pruebas)" variant="outline" onPress={registerAgain} />

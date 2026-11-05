@@ -1,8 +1,8 @@
 // Pestaña 2 - Vehículo.
 // Los datos se guardan en el contexto del registro; las validaciones vienen de utils/validators.js.
 // AI-assisted: see docs/AI_LOG.md #3
-import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import React, { useRef } from 'react';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import FormField from '../../components/form/FormField';
 import ImageField from '../../components/form/ImageField';
@@ -22,10 +22,21 @@ export default function VehicleScreen() {
 
   const errorOf = (field) => getError(vehicleErrors, field);
 
+  // Referencias para pasar al siguiente campo con el botón "Siguiente" del teclado
+  const brandRef = useRef(null);
+  const modelRef = useRef(null);
+  const yearRef = useRef(null);
+
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Vehículo</Text>
+    // iOS ajusta solo el scroll cuando aparece el teclado; se puede cerrar arrastrando hacia abajo
+    <ScrollView
+      style={styles.flex}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
+    >
+        <Text style={styles.title} accessibilityRole="header">Vehículo</Text>
         <Text style={styles.subtitle}>Todos los campos son obligatorios.</Text>
 
         <SelectField
@@ -44,28 +55,45 @@ export default function VehicleScreen() {
           error={errorOf('plate')}
           autoCapitalize="characters"
           autoCorrect={false}
+          autoComplete="off"
           maxLength={6}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => brandRef.current?.focus()}
         />
 
         <FormField
+          ref={brandRef}
           label="Marca"
           placeholder="Ej. Chevrolet"
           value={vehicle.brand}
           onChangeText={(text) => updateVehicle('brand', text)}
           error={errorOf('brand')}
           maxLength={30}
+          autoCapitalize="words"
+          autoComplete="off"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => modelRef.current?.focus()}
         />
 
         <FormField
+          ref={modelRef}
           label="Modelo"
           placeholder="Ej. Onix"
           value={vehicle.model}
           onChangeText={(text) => updateVehicle('model', text)}
           error={errorOf('model')}
           maxLength={30}
+          autoCapitalize="words"
+          autoComplete="off"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => yearRef.current?.focus()}
         />
 
         <FormField
+          ref={yearRef}
           label="Año"
           placeholder={`Ej. ${new Date().getFullYear() - 3}`}
           value={vehicle.year}
@@ -100,8 +128,7 @@ export default function VehicleScreen() {
           onChange={(uri) => updateVehicle('vehiclePhoto', uri)}
           error={errorOf('vehiclePhoto')}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </ScrollView>
   );
 };
 
