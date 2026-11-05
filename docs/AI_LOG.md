@@ -180,15 +180,48 @@ Organización. Separar el proyecto en carpetas por responsabilidad (services, co
 - **Aprendizaje:** Aprendí la estructura `Navigator` / `Screen` de React Navigation y que el contenedor va una sola vez. Con `screenOptions` como función se evita repetir código. Conviene separar el nombre interno de la ruta del título que ve el usuario.
 
 
+## #4 -Error en la hora de enviar el registro
+- Fecha: 05/11/2026
+- Integrante: Camilo Lopez Alzate
+- Herramienta: chat de Claude en visual studio code
+- Objetivo: Corregir el error que aparece al enviar el registro " LOG  Error al enviar el registro [Error: Unsupported FormDataPart implementation] "
+- Prompt: " LOG  Error al enviar el registro [Error: Unsupported FormDataPart implementation], A que se debe este error y como puedo solucionarlo?" 
+- Resumen de la respuesta: El error Unsupported FormDataPart implementation ocurre porque en Expo SDK 58 el fetch de Expo no acepta el objeto { uri, type, name } dentro de un FormData. La solución es instalar expo-file-system y convertir la foto en un File (new File(uri)) antes de agregarla al FormData, en cloudinaryService.js.
+- Enlace:
+- Qué se usó / modificó / descartó: Se usó la solución propuesta: se instaló expo-file-system con `npx expo install` y se cambió en `cloudinaryService.js` la forma de agregar la foto al FormData (de `{ uri, type, name }` a `new File(uri)`). No se modificó nada más. Se descartó cambiar `fetch` por XMLHttpRequest, para seguir usando fetch como en clase.
+- Archivos y commit: src/services/cloudinaryService.js, package.json, package-lock.json — [9b6400e]
+- Verificación: Al tocar Enviar registro aparece la pantalla de cuenta pendiente, el conductor queda en Firestore en la colección drivers con status "pending" y las 2 fotos aparecen en Cloudinary en la carpeta uberclone.
+- Aprendizaje: Que cada versión del SDK de Expo puede cambiar cómo funcionan cosas básicas como fetch, y que leer el mensaje exacto en la terminal es la forma más rápida de encontrar la causa en vez de adivinar.
+
+### Entrada #5
+- Fecha: 2026-11-05
+- Integrante: Camilo López
+- Herramienta: Claude vs
+- Objetivo: Proponer un diseño más limpio, parecido a la app real de Uber, e implementar una pantalla de bienvenida antes del registro del conductor.
+- Prompt: Me gustaria que me propusieras un diseño más limpio, parecido a la app real de Uber, para la pantalla de bienvenida antes del registro del conductor. Quiero que me expliques cómo abrir esta pantalla desde `RootStack` cuando no hay sesión, y cómo pasar la pantalla de fondo negro a blanco cambiando solo los colores del `StyleSheet`.
+- Resumen de la respuesta: La IA propuso un diseño de 5 pantallas en blanco y negro: bienvenida, datos personales, vehículo, lista de opciones tipo hoja inferior y cuenta en revisión. Mantuvo las 3 pestañas que pide el PDF. Para hoy generó `WelcomeScreen.js` con la marca, un mapa dibujado solo con `View`, el título, los 3 pasos numerados y el botón "Registrarme como conductor". Explicó cómo abrir la bienvenida desde `RootStack` cuando no hay sesión`StyleSheet`.
+- Enlace:
+- Qué se usó / modificó / descartó:
+  - **Usado:** `WelcomeScreen` con `useSafeAreaInsets` y `useNavigation`; ruta `Welcome` con `headerShown: false`; ruta inicial `Welcome` cuando no hay `DRIVER_ID`; el botón de pruebas de la cuenta pendiente ahora vuelve a `Welcome`.
+  - **Modificado:**
+  - **Descartado por ahora:** el enlace "Ya me registré" del diseño, porque `RootStack` ya abre la cuenta pendiente si hay sesión. El rediseño de las demás pantallas queda para después de la Entrega 1.
+- Archivos y commit:
+  - `src/screens/WelcomeScreen.js` (nuevo)
+  - `src/navigation/RootStack.js`
+  - `src/screens/PendingApprovalScreen.js`
+  - Commits: `<12064a6>` Agrega la pantalla de bienvenida del conductor.
+- Verificación: Probado en Expo Go (iPhone). Sin sesión, la app abre en la bienvenida. El botón abre el registro y la flecha de atrás regresa. Con sesión guardada abre directo la cuenta en revisión. "Registrar otro conductor (pruebas)" vuelve a la bienvenida. No hay errores en la consola.
+- Aprendizaje: Aprendí a ocultar el header de una sola pantalla con `headerShown: false`, a usar los insets del área segura para que el contenido no quede debajo del notch, y a empujar el botón al final de la pantalla con `marginTop: 'auto'`. También vi que con `initialRouteName` se decide qué pantalla abre según la sesión guardada.
+
 
 
 
 <!-- Plantilla para copiar en cada nueva entrada:
 
-### Entrada #N
+###
 - Fecha:
-- Integrante:
-- Herramienta:
+- Integrante: 
+- Herramienta: 
 - Objetivo:
 - Prompt: "..." (texto completo, sin resumir)
 - Resumen de la respuesta:

@@ -1,7 +1,7 @@
 // Pestaña 1 - Datos personales.
 //Ai- assisted: see docs/AI_LOG.md #
-import React from 'react';
-import { StyleSheet, Text, ScrollView,KeyboardAvoidingView,Platform } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, Text, ScrollView } from 'react-native';
 
 import DateField from '../../components/form/DateField';
 import FormField from '../../components/form/FormField';
@@ -23,15 +23,25 @@ export default function PersonalDataScreen(){
   //Error de un campo: solo se muestra  si ya lo tocó o si lo intentó enviar 
   const  errorOf  = (field) => getError(personalErrors,field);
 
+  // Referencias para pasar al siguiente campo con el botón "Siguiente" del teclado
+  const documentRef = useRef(null);
+  const phoneRef = useRef(null);
+
   // El idioma es una preferencia: además del registro, se guarda   en AsyncStorage
   function handleLanguage(value) {
     updatePersonal('language', value);
     if (value)saveData(STORAGE_KEYS.LANGUAGE, value);
   };
   return(
-     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Datos personales</Text>
+      // iOS ajusta solo el scroll cuando aparece el teclado; se puede cerrar arrastrando hacia abajo
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
+        <Text style={styles.title} accessibilityRole="header">Datos personales</Text>
         <Text style={styles.subtitle}>Todos los campos son obligatorios.</Text>
 
         <ImageField
@@ -51,9 +61,15 @@ export default function PersonalDataScreen(){
           error={errorOf('fullName')}
           maxLength={50}
           autoCapitalize="words"
+          textContentType="name"
+          autoComplete="name"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => documentRef.current?.focus()}
         />
 
         <FormField
+          ref={documentRef}
           label="Documento de identidad"
           placeholder="Entre 6 y 10 dígitos"
           value={personal.documentId}
@@ -61,9 +77,13 @@ export default function PersonalDataScreen(){
           error={errorOf('documentId')}
           keyboardType="number-pad"
           maxLength={10}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => phoneRef.current?.focus()}
         />
 
         <FormField
+          ref={phoneRef}
           label="Número de celular"
           placeholder="Ej. 3001234567"
           value={personal.phone}
@@ -71,6 +91,8 @@ export default function PersonalDataScreen(){
           error={errorOf('phone')}
           keyboardType="phone-pad"
           maxLength={10}
+          textContentType="telephoneNumber"
+          autoComplete="tel"
         />
 
         <DateField
@@ -99,6 +121,9 @@ export default function PersonalDataScreen(){
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="emailAddress"
+          autoComplete="email"
+          returnKeyType="done"
         />
 
         <SelectField
@@ -109,7 +134,6 @@ export default function PersonalDataScreen(){
           error={errorOf('language')}
         />
       </ScrollView>
-    </KeyboardAvoidingView>
   );
 };
 

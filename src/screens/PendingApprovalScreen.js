@@ -65,10 +65,10 @@ export default function PendingApprovalScreen() {
     };
   }, []);
 
-  // Solo para pruebas: borra la sesión y vuelve al registro
+  // Solo para pruebas: borra la sesión y vuelve a la bienvenidad
   async function registerAgain() {
     await removeData(STORAGE_KEYS.DRIVER_ID);
-    navigation.reset({ index: 0, routes: [{ name: 'Register' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
   };
 
   if (loading) {
@@ -99,7 +99,12 @@ export default function PendingApprovalScreen() {
             {isApproved ? 'Se activa en la pantalla de inicio (entrega final).' : 'Bloqueado hasta que tu cuenta sea aprobada.'}
           </Text>
         </View>
-        <Switch value={false} disabled />
+        <Switch
+          value={false}
+          disabled
+          accessibilityLabel="Disponible"
+          accessibilityHint={isApproved ? 'Se activa en la pantalla de inicio.' : 'Bloqueado hasta que tu cuenta sea aprobada.'}
+        />
       </View>
 
       <AppButton title="Registrar otro conductor (pruebas)" variant="outline" onPress={registerAgain} />

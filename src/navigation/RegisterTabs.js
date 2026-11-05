@@ -22,6 +22,13 @@ const ICONS = {
   Documents: 'document-text-outline',
 };
 
+// Título de cada pestaña (se usa también para lo que lee VoiceOver)
+const TITLES = {
+  PersonalData: 'Datos personales',
+  Vehicle: 'Vehículo',
+  Documents: 'Documentos',
+};
+
 export default function RegisterTabs() {
   // AI-assisted: see docs/AI_LOG.md #3
   const { isPersonalValid, isVehicleValid } = useRegister();
@@ -36,6 +43,8 @@ export default function RegisterTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSoft,
+        // El check verde solo es visual: VoiceOver también debe decir que la pestaña está completa
+        tabBarAccessibilityLabel: isComplete[route.name] ? `${TITLES[route.name]}, completo` : TITLES[route.name],
         tabBarIcon: ({ color, size }) =>
           isComplete[route.name] ? (
             <Ionicons name="checkmark-circle" size={size} color={colors.accent} />
@@ -51,9 +60,9 @@ export default function RegisterTabs() {
         </>
       )}
     >
-      <Tab.Screen name="PersonalData" component={PersonalDataScreen} options={{ title: 'Datos personales' }} />
-      <Tab.Screen name="Vehicle" component={VehicleScreen} options={{ title: 'Vehículo' }} />
-      <Tab.Screen name="Documents" component={DocumentsScreen} options={{ title: 'Documentos' }} />
+      <Tab.Screen name="PersonalData" component={PersonalDataScreen} options={{ title: TITLES.PersonalData }} />
+      <Tab.Screen name="Vehicle" component={VehicleScreen} options={{ title: TITLES.Vehicle }} />
+      <Tab.Screen name="Documents" component={DocumentsScreen} options={{ title: TITLES.Documents }} />
     </Tab.Navigator>
   );
 };

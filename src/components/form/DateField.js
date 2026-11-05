@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import useAnnounceError from '../../hooks/useAnnounceError';
 import { colors } from '../../theme/colors';
 
 const formatDate = (date) =>
@@ -12,6 +13,7 @@ const formatDate = (date) =>
 
 export default function DateField({ label, error, value, onChange, maximumDate, minimumDate }) {
   const [open, setOpen] = useState(false);
+  useAnnounceError(error);
 
   // En Android el calendario se cierra solo al elegir; en iPhone lo cierra el botón Listo
   function handleValueChange(event, selectedDate) {
@@ -21,9 +23,15 @@ export default function DateField({ label, error, value, onChange, maximumDate, 
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} importantForAccessibility="no" accessibilityElementsHidden>
+        {label}
+      </Text>
       <Pressable
         onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityValue={{ text: value ? formatDate(value) : 'Sin seleccionar' }}
+        accessibilityHint={error || 'Abre el selector de fecha'}
         style={({ pressed }) => [styles.box, error ? styles.boxError : null, pressed && styles.pressed]}
       >
         <Text style={value ? styles.value : styles.placeholder}>
@@ -43,14 +51,23 @@ export default function DateField({ label, error, value, onChange, maximumDate, 
             onDismiss={() => setOpen(false)}
           />
           {Platform.OS === 'ios' && (
-            <Pressable onPress={() => setOpen(false)} style={styles.doneButton}>
+            <Pressable
+              onPress={() => setOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Listo"
+              style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
+            >
               <Text style={styles.doneText}>Listo</Text>
             </Pressable>
           )}
         </View>
       )}
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -66,7 +83,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   box: {
-    height: 48,
+    // minHeight para que la fecha no se corte con letra grande (Dynamic Type)
+    minHeight: 48,
+    paddingVertical: 12,
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
@@ -89,8 +108,11 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
   },
   doneButton: {
+    // Área táctil mínima de 44x44 pt (Human Interface Guidelines)
     alignSelf: 'flex-end',
-    paddingVertical: 8,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
     paddingHorizontal: 12,
   },
   doneText: {

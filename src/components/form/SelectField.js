@@ -4,14 +4,24 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
+import useAnnounceError from '../../hooks/useAnnounceError';
 import { colors } from '../../theme/colors';
 
 export default function SelectField({ label, error, value, onChange, options, placeholder = 'Selecciona una opción' }) {
+  useAnnounceError(error);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} importantForAccessibility="no" accessibilityElementsHidden>
+        {label}
+      </Text>
       <View style={[styles.box, error ? styles.boxError : null]}>
-        <Picker selectedValue={value} onValueChange={onChange} style={styles.picker}>
+        <Picker
+          selectedValue={value}
+          onValueChange={onChange}
+          style={styles.picker}
+          accessibilityLabel={error ? `${label}. ${error}` : label}
+        >
           {/* Primera opción vacía: obliga a elegir una de verdad */}
           <Picker.Item label={placeholder} value="" color={colors.textSoft} />
           {options.map((item) => (
@@ -19,7 +29,11 @@ export default function SelectField({ label, error, value, onChange, options, pl
           ))}
         </Picker>
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 };

@@ -1,13 +1,18 @@
 // Servicio de Cloudinary: sube una foto y devuelve su URL.
 // En Firestore no se guarda la imagen, solo la URL que entrega Cloudinary.
 // AI-assisted: see docs/AI_LOG.md #1
+// AI-assisted: see docs/AI_LOG.md #4
+import {File as localFile } from 'expo-file-system';
 import { CLOUDINARY_UPLOAD_PRESET, CLOUDINARY_URL } from '../config/cloudinary';
 
 // CONCEPTO: método asincrónico con async/await y fetch
 // uri: ruta local de la foto (la que da expo-image-picker); folder: carpeta en Cloudinary
 export const uploadImage = async (uri, folder) => {
+
+  const photo = new localFile(uri);
+
   const formData = new FormData();
-  formData.append('file', { uri, type: 'image/jpeg', name: `${folder}-${Date.now()}.jpg` });
+  formData.append('file', photo);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
   formData.append('folder', `uberclone/${folder}`);
 
