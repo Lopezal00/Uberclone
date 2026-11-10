@@ -1,8 +1,10 @@
 // Pestaña 1 - Datos personales.
 //Ai- assisted: see docs/AI_LOG.md #
-import React, { useRef } from 'react';
-import { StyleSheet, Text, ScrollView } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, Text, ScrollView, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
+import AppButton from '../../components/AppButton';
 import DateField from '../../components/form/DateField';
 import FormField from '../../components/form/FormField';
 import ImageField from '../../components/form/ImageField';
@@ -18,10 +20,24 @@ const onlyDigits = (text) => text.replace(/[^0-9]/g,'');
 
 export default function PersonalDataScreen(){
   //CONCEPTO:  useContext: Leemos  y cambiamos  los datos  compartidos del registro.
-  const { personal, updatePersonal, personalErrors, getError } = useRegister();
+  const { personal, updatePersonal, personalErrors,  isPersonalValid, getError } = useRegister();
 
   //Error de un campo: solo se muestra  si ya lo tocó o si lo intentó enviar 
-  const  errorOf  = (field) => getError(personalErrors,field);
+  const navigation = useNavigation();
+   // true cuando tocó Continuar con campos incompletos: desde ahí se muestran todos los errores de esta pestaña
+  const [triedToContinue, setTriedToContinue] = useState(false);
+
+   // Si ya intentó continuar, mostramos el error aunque no haya tocado el campo
+  const errorOf = (field) => (triedToContinue ? personalErrors[field] : getError(personalErrors, field));
+
+  // Pasa a la siguiente pestaña solo si esta está completa
+    function goToVehicle() {
+     if (!isPersonalValid) {
+       setTriedToContinue(true);
+       return;
+     };
+     navigation.navigate('Vehicle');
+   };
 
   // Referencias para pasar al siguiente campo con el botón "Siguiente" del teclado
   const documentRef = useRef(null);
@@ -133,6 +149,13 @@ export default function PersonalDataScreen(){
           options={LANGUAGES}
           error={errorOf('language')}
         />
+        {/* Botón para pasar a la siguiente pestaña */}
+        <View style={styles.continue}>
+          {triedToContinue && !isPersonalValid ? (
+            <Text style={styles.continueError}>Revisa los campos marcados en rojo.</Text>
+          ) : null}
+          <AppButton title="Continuar a Vehículo" onPress={goToVehicle} />
+        </View>
       </ScrollView>
   );
 };
@@ -155,5 +178,14 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
     marginTop: 4,
     marginBottom: 20,
+  },
+    continue: {
+    marginTop: 8,
+    gap: 8,
+  },
+  continueError: {
+    fontSize: 14,
+    color: colors.error,
+    textAlign: 'center',
   },
 });
