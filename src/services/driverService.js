@@ -41,3 +41,21 @@ export const listenDriver = (driverId, onChange) =>
   onSnapshot(doc(db, DRIVERS, driverId), (snap) => {
     onChange(snap.exists() ? { id: snap.id, ...snap.data() } : null);
   });
+
+  
+//Disponibilidad y ubicación (pantalla de Inicio)
+// AI-assisted: see docs/AI_LOG.md #7
+
+// Disponible / No disponible. Solo los conductores disponibles reciben solicitudes.
+export const setDriverAvailability = async (driverId, isAvailable) => {
+  await updateDoc(doc(db, DRIVERS, driverId), { isAvailable, availabilityUpdatedAt: new Date() });
+};
+
+// Guarda la última ubicación del conductor (se llama cada pocos segundos mientras está Disponible)
+export const updateDriverLocation = async (driverId, { lat, lng }) => {
+  await updateDoc(doc(db, DRIVERS, driverId), {
+    location: { lat, lng },
+    locationUpdatedAt: new Date(),
+  });
+};
+
