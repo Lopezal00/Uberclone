@@ -1,0 +1,4 @@
+node_modules/
+# Llaves y credenciales: nunca se suben
+.env
+serviceAccountKey.json
