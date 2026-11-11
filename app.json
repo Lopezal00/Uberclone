@@ -28,7 +28,8 @@
           "photosPermission": "La app necesita tus fotos para el registro del conductor.",
           "cameraPermission": "La app necesita la cámara para tomar las fotos del registro."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
