@@ -213,6 +213,7 @@ Organización. Separar el proyecto en carpetas por responsabilidad (services, co
 - Verificación: Probado en Expo Go (iPhone). Sin sesión, la app abre en la bienvenida. El botón abre el registro y la flecha de atrás regresa. Con sesión guardada abre directo la cuenta en revisión. "Registrar otro conductor (pruebas)" vuelve a la bienvenida. No hay errores en la consola.
 - Aprendizaje: Aprendí a ocultar el header de una sola pantalla con `headerShown: false`, a usar los insets del área segura para que el contenido no quede debajo del notch, y a empujar el botón al final de la pantalla con `marginTop: 'auto'`. También vi que con `initialRouteName` se decide qué pantalla abre según la sesión guardada.
 
+
 ### Entrada #6
 Fecha: 06/11/2026-07/11/26
 Integrante: Camilo Lopez Alzate
@@ -291,7 +292,94 @@ Control de acceso declarativo: La navegación no debe manejarse mediante redirec
 Gestión responsable de conexiones en tiempo real: Los listeners de Firestore en React Native deben estar estrictamente acoplados al ciclo de vida del componente mediante funciones de limpieza (return () => unsubscribe()), evitando fugas de memoria o actualizaciones de estado sobre componentes desmontados.
 Estrategia de desarrollo modular en equipo: El uso de pantallas puente (PlaceholderScreen) con interfaces y contratos claros permite que la arquitectura base de navegación quede cerrada y validada sin bloquear el progreso de otros desarrolladores que trabajan en submódulos específico
 
+ ## Entrada 8
+Fecha: 10 de noviembre de 2026
+Integrante:  Camilo Lopez 
+Herramienta: Claude VS
+Objetivo: Diseñar e implementar la arquitectura del backend de pagos para la aplicación móvil UberClone Conductor, integrando la pasarela de Mercado Pago (Checkout Pro en modo Sandbox) con Firebase Firestore (Firebase Admin SDK), garantizando que las credenciales sensibles y la lógica de validación de tarifas permanezcan estrictamente en el servidor.
 
+
+Prompt: "Estoy desarrollando el módulo de pagos para nuestra aplicación móvil de transporte (UberClone Conductor en Expo / React Native con Firebase Firestore). Necesito que me acompañes paso a paso en el diseño y construcción de un backend en Node.js y Express para procesar los cobros mediante Mercado Pago Checkout Pro (Sandbox).
+
+Por favor, no me des solo el código resuelto, sino guíame y acompáñame en las decisiones técnicas para cumplir con estas directrices clave:
+
+Seguridad y arquitectura: Quiero asegurarme de que el Access Token de Mercado Pago y las credenciales de Firebase Admin nunca queden expuestas en la app móvil. ¿Cómo estructuramos el flujo para que la app cliente solo envíe el identificador del viaje (tripId) y sea el backend el que consulte en Firestore el monto real y cree la preferencia, evitando cualquier manipulación de tarifas por parte del usuario?
+Validaciones de negocio: ¿Qué comprobaciones de integridad deberíamos hacer antes de emitir la orden de pago (validar existencia, estado completed, método mercadopago, evitar cobros duplicados si ya está paid, tarifas válidas)?
+Sincronización dual (Webhooks vs. Polling): Explícame cómo manejar tanto la recepción de webhooks de Mercado Pago (con validación de firma criptográfica y re-consulta a la API para no confiar en el payload entrante) como un mecanismo de respaldo por consulta manual (GET /payments/status/:tripId), pensando en que durante el desarrollo local no siempre contaremos con un túnel HTTPS público.
+Estructura limpia y modular: Acompáñame a estructurar el proyecto en Node (ES Modules) separando configuración, clientes SDK, lógica de pagos en Firestore y rutas (/payments, /webhooks).
+Integración con la app móvil y pruebas: ¿Cómo estructuramos el servicio en el frontend Expo (paymentService.js) con fetch y async/await para comunicarse con este backend, y cómo diseñamos un script de pruebas (createTestTrip.js) para simular viajes finalizados y verificar el flujo completo de pago sin depender de que la app móvil esté terminada?"
+
+Resumen de la respuesta: La IA guio el proceso de desarrollo en las siguientes etapas clave:
+
+Modelo de Seguridad y Arquitectura Desacoplada: Se definió un flujo donde la aplicación móvil nunca contacta directamente a Mercado Pago ni maneja credenciales privadas. El cliente envía únicamente el tripId al backend.
+Verificación de Integridad en Servidor: Se diseñó la función getPayableTrip para consultar Firestore con privilegios de administrador, asegurando que el viaje exista, esté finalizado (status === 'completed'), use paymentMethod === 'mercadopago' y no haya sido pagado previamente (status !== 'paid'), calculando el valor total (fare + tip) de forma fidedigna.
+Generación de Preferencias Checkout Pro: Implementación de POST /payments/preference usando mercadopago v2, inyectando external_reference = trip.id, actualizando el viaje a paymentStatus: 'pending' y retornando el checkoutUrl (init_point).
+Estrategia Híbrida de Confirmación:
+Webhook seguro: En POST /webhooks/mercadopago, validación de cabeceras (x-signature, x-request-id) mediante WebhookSignatureValidator. Siguiendo el principio de desconfianza cero, el backend re-consulta el pago oficial a Mercado Pago con paymentClient.get(dataId) antes de actualizar Firestore (savePaymentInTrip).
+Verificación manual / polling: Endpoint de contingencia GET /payments/status/:tripId que busca transacciones recientes mediante paymentClient.search({ external_reference: tripId }), permitiendo probar el flujo en red local sin túneles HTTPS.
+Manejo de Red y Accesibilidad: Configuración de Express escuchando en 0.0.0.0 para que dispositivos físicos (iPhone/Android) en la misma red Wi-Fi puedan comunicarse con la IP del servidor.
+Capa Cliente y Scripting: Diseño de paymentService.js para la app Expo y de createTestTrip.js para crear viajes de prueba con valores realistas (19.200 COP).
+
+Enlace: Completar Bitácora de Desarrollo
+
+Qué se usó / modificó / descartó:
+
+Qué se usó:
+Node.js (v20+ con ES Modules) y Express 5.
+SDK oficial de Mercado Pago (mercadopago v2.13.0: Preference, Payment, WebhookSignatureValidator).
+Firebase Admin SDK (firebase-admin v13.10.0) para manipulación directa y autorizada de Firestore (serviceAccountKey.json).
+dotenv para gestión segura de variables de entorno.
+fetch con sintaxis async/await en la capa de servicios de la app Expo/React Native.
+Qué se modificó:
+Creación completa de la infraestructura backend en la carpeta backend/.
+Actualización de plantillas de variables de entorno (backend/.env.example y .env.example en la raíz para EXPO_PUBLIC_BACKEND_URL).
+Creación de los módulos de integración cliente en src/config/backend.js y src/services/paymentService.js.
+Qué se descartó:
+Se descartó inicializar Mercado Pago en el cliente móvil: Conectar la pasarela directamente desde Expo expondría el Access Token y permitiría al usuario manipular el monto del cobro en el dispositivo.
+Se descartó confiar en el cuerpo del Webhook: Se descartó procesar directamente el JSON entrante del webhook sin verificación; en su lugar, se implementó validación criptográfica de firma HMAC y consulta activa de confirmación (paymentClient.get).
+Se descartó exigir túneles HTTPS de forma estricta para desarrollo local: Se implementó el fallback GET /payments/status/:tripId para permitir pruebas inmediatas sin requerir herramientas como ngrok o Cloudflare Tunnels en etapas tempranas.
+
+Archivos y commit:
+
+Archivos creados/modificados:
+backend/package.json
+backend/.env.example
+backend/.gitignore
+backend/README.md
+backend/src/config.js
+backend/src/firebaseAdmin.js
+backend/src/mercadoPago.js
+backend/src/tripPayments.js
+backend/src/server.js
+backend/src/routes/payments.js
+backend/src/routes/webhooks.js
+backend/scripts/createTestTrip.js
+.env.example
+src/config/backend.js
+src/services/paymentService.js
+Commit sugerido:
+
+- ac9b255 (HEAD -> feature/pagos-backend) Se agrego el servicio de pagos de la app
+- 39cdbf4 Agrego  el viaje de prueba y la guía del backend
+- e8aa212 Se agregan las rutas de pago y el webhook de Mercado Pago
+- c68456c Crea el proyecto del backend de pagos
+
+
+Verificación:
+
+Disponibilidad de red: Comprobación del endpoint GET /health respondiendo {"ok":true,"webhook":false} desde localhost y desde la IP local en el dispositivo móvil.
+Generación de datos de prueba: Ejecución de npm run test-trip para poblar Firestore con un viaje de prueba en estado completed por valor de $19.200 COP y obtención de su ID.
+Creación de Checkout Preference: Petición POST /payments/preference con cuerpo {"tripId":"<ID>"}; verificación de que el backend valida el documento en Firestore, genera la preferencia en Mercado Pago, retorna checkoutUrl y actualiza el viaje a paymentStatus: 'pending'.
+Simulación de cobro y Sandbox: Apertura del enlace de checkout en navegador y realización de pago con credenciales y tarjeta de prueba de Mercado Pago.
+Sincronización de estado: Ejecución de GET /payments/status/<ID>; el backend localiza el pago mediante paymentClient.search({ external_reference: tripId }), actualiza el estado en Firestore a paymentStatus: 'approved' y el viaje a status: 'paid' con sus respectivas marcas de tiempo.
+Resiliencia ante errores: Verificación de rechazos controlados con códigos HTTP adecuados (400 si el viaje no está finalizado o faltan datos, 404 si no existe, 409 si ya fue pagado).
+
+Aprendizaje:
+
+Principio de Confianza Cero en Clientes Móviles: Las aplicaciones cliente son entornos inseguros; delegar el cálculo de tarifas o la interacción directa con la pasarela de pago al dispositivo móvil introduce vulnerabilidades críticas de alteración de precios o filtración de claves API.
+Patrón de Re-consulta en Webhooks: Frente a eventos asíncronos externos, no basta con autenticar la firma criptográfica; volver a consultar el recurso directamente a la pasarela emisora (paymentClient.get) previene ataques de repetición o estados desactualizados.
+Diseño orientado a la experiencia de desarrollo (DX): Al diseñar un flujo dependiente de webhooks (que requiere túneles HTTPS públicos), proveer un mecanismo simétrico de sondeo o verificación manual simplifica drásticamente el desarrollo y la depuración en red local.
+Mapeo explícito de estados: Es esencial desacoplar los estados propios del proveedor de pagos (approved, in_process, rejected) de la máquina de estados de negocio de la aplicación (pending, completed, paid).
 
 <!-- Plantilla para copiar en cada nueva entrada:
 
