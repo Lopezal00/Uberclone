@@ -29,6 +29,9 @@
           "cameraPermission": "La app necesita la cámara para tomar las fotos del registro."
         }
       ],
+feature/prueba-tarifas
+      "expo-font"
+
       [
         "expo-location",
         {
@@ -36,6 +39,7 @@
         }
       ]
 
+main
     ]
   }
 }
