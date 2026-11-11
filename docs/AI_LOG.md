@@ -213,11 +213,91 @@ Organización. Separar el proyecto en carpetas por responsabilidad (services, co
 - Verificación: Probado en Expo Go (iPhone). Sin sesión, la app abre en la bienvenida. El botón abre el registro y la flecha de atrás regresa. Con sesión guardada abre directo la cuenta en revisión. "Registrar otro conductor (pruebas)" vuelve a la bienvenida. No hay errores en la consola.
 - Aprendizaje: Aprendí a ocultar el header de una sola pantalla con `headerShown: false`, a usar los insets del área segura para que el contenido no quede debajo del notch, y a empujar el botón al final de la pantalla con `marginTop: 'auto'`. También vi que con `initialRouteName` se decide qué pantalla abre según la sesión guardada.
 
+
+### Entrada #6
+Fecha: 06/11/2026-07/11/26
+Integrante: Camilo Lopez Alzate
+Herramienta: Claude vs
+Objetivo: Diseñar la arquitectura de navegación condicional y gestión reactiva de sesión del conductor en React Native (Expo), garantizando el bloqueo de acceso según el estado de aprobación en Firestore, una navegación limpia con Stack y Drawer personalizado, y una estructura modular desacoplada mediante pantallas temporales (placeholders) para facilitar la integración con el trabajo de los demás integrantes del equipo (Camilo y Sara).
+
+Prompt:
+
+"Actúa como mi Compañero senior de proyecto y arquitecto de software móvil. Estoy desarrollando la aplicación móvil para conductores de un clon de Uber en React Native con Expo y Firebase Firestore. Actualmente me enfrento al reto de estructurar la navegación global y el flujo de sesión, pero no quiero que me des código resuelto; necesito que me asesores y me guíes metodológica y conceptualmente para llegar a la solución por mí mismo.
+
+Tengo los siguientes requerimientos y dudas:
+1. Flujo de sesión y seguridad en la navegación: Un conductor puede estar en tres situaciones: nunca se ha registrado en el dispositivo, se registró pero su cuenta está en revisión (pending o rejected), o ya fue aprobado por el administrador (approved). ¿Cómo debo estructurar el árbol de navegación para que la app determine automáticamente en qué pantalla abrir sin saltos bruscos y sin permitir que un conductor no aprobado regrese a la pantalla principal usando el botón 'Atrás' de Android?
+2. Estado global y reactividad en tiempo real: Necesitamos que si un administrador aprueba al conductor en Firestore mientras este tiene abierta la app en la pantalla de revisión, la interfaz reaccione en tiempo real sin obligar al usuario a recargar la app ni saturar la base de datos con peticiones cíclicas (polling). ¿Qué patrón de React debo usar para escuchar estos cambios y cómo debo gestionar la memoria y el ciclo de vida para evitar fugas de memoria (memory leaks)?
+3. Jerarquía Stack vs. Drawer: Las vistas principales del conductor aprobado serán Inicio (con mapa y switch de disponibilidad), Historial, Ganancias y Perfil. Además, debe haber un menú lateral con los datos del conductor y su vehículo, junto con la opción de cerrar sesión. ¿Cómo se orquestan un Native Stack y un Drawer Navigator para que convivan ordenadamente sin interferir con futuros flujos modales de viajes (solicitud entrante, viaje en curso, cobro)?
+4. Estrategia para trabajo en equipo en paralelo: Mis compañeros de equipo están desarrollando en paralelo otras ramas ( Yo la pantalla de Inicio con mapa y disponibilidad, y Sara el módulo de Ganancias e Historial). ¿Qué arquitectura de componentes me recomiendas diseñar para que la navegación ya esté 100% funcional y enlazada, pero permitiendo que ella sustituya sus pantallas en sus respectivas ramas sin generar conflictos de fusión (merge conflicts)?
+
+Explícame la arquitectura recomendada, los conceptos clave de React Navigation y Context API a implementar, y el paso a paso de diseño que debo seguir."
+
+Resumen de la respuesta:
+Me  explicó la arquitectura de navegación guiada por estado (state-driven navigation) dividida en cuatro pilares:
+
+Contexto unificado de sesión (DriverSessionContext): Recomendó centralizar el driverId, la entidad driver y la bandera calculada isApproved en un Context Provider envolvente. Indicó utilizar el patrón Observer mediante un listener en tiempo real (onSnapshot / listenDriver) dentro de un useEffect, asegurando la función de limpieza (unsubscribe) en el retorno para prevenir memory leaks.
+Navegación condicional en RootStack: Sugirió una función pura determinista (getInitialRoute) que evalúe la sesión al iniciar la aplicación. Durante la lectura asíncrona de almacenamiento local (AsyncStorage), se debe renderizar un estado de carga global (ActivityIndicator). Al mismo tiempo, aconsejó deshabilitar gestos y botones de retroceso (gestureEnabled: false, headerBackVisible: false) en pantallas críticas como PendingApproval para evitar regresiones no autorizadas.
+Anidamiento jerárquico (Stack que envuelve al Drawer): Planteó que el Stack raíz controle los flujos de autenticación, revisión y futuros flujos lineales de viaje, mientras que el DrawerNavigator sea una ruta más dentro del Stack (Main). Para el menú lateral, asesoró desacoplar el encabezado dinámico (consumiendo los datos del conductor desde el contexto) del listado estándar (DrawerItemList) e implementar el cierre de sesión mediante navigation.getParent().reset(...) para purgar el historial de pantallas.
+Patrón de Placeholders para trabajo concurrente: Aconsejó crear un componente modular PlaceholderScreen parametrizable por icono, título y descripción. Con esto, las rutas del Drawer quedan declaradas y enlazadas desde el primer momento, dejando contratos claros y mínimos en las carpetas de destino para que los compañeros reemplacen únicamente el archivo de pantalla correspondiente sin alterar la configuración del navegador.
+
+Enlace:
+(Enlace a la sesión/conversación con el asistente o herramienta de IA)
+
+Qué se usó / modificó / descartó:
+
+Qué se usó:
+@react-navigation/native-stack para el stack principal (RootStack) y @react-navigation/drawer para el menú lateral del conductor aprobado (MainDrawer).
+react-native-gesture-handler (GestureHandlerRootView) en la raíz (App.js) para habilitar el soporte de gestos del Drawer.
+SafeAreaProvider y useSafeAreaInsets para respetar el notch y la barra de navegación del sistema en el menú lateral.
+React Context API con hooks avanzados (useCallback, useMemo, useContext) para optimizar re-renderizados innecesarios y exponer useDriverSession.
+Componente genérico y reutilizable PlaceholderScreen para aislar las pantallas pendientes de los demás compañeros.
+Qué se modificó:
+App.js: Se configuró la jerarquía de Providers (GestureHandlerRootView > SafeAreaProvider > NavigationContainer > DriverSessionProvider > RegisterProvider) y la personalización del tema visual (navTheme).
+src/screens/PendingApprovalScreen.js: Se integró con el contexto de sesión para reaccionar a cambios en tiempo real, bloqueando el switch de disponibilidad hasta la aprobación formal y ofreciendo botones de redirección o reinicio de sesión para pruebas.
+Qué se descartó:
+Se descartó el uso de consultas periódicas por intervalo (polling con setInterval) para verificar el estado de aprobación, prefiriendo la suscripción por eventos en tiempo real con Firestore.
+Se descartó anidar el flujo completo de la aplicación dentro del Drawer; se optó por un RootStack jerárquicamente superior para que pantallas como el registro, la bienvenida y los futuros cobros/viajes se presenten en pantalla completa sin menús laterales invasivos.
+Se descartó el uso de navigation.navigate('Welcome') al cerrar sesión; se optó por navigation.reset() sobre el navegador padre (getParent()) para destruir el árbol de navegación previo y prevenir navegación residual hacia atrás.
+
+Archivos y commit:
+
+Archivos implementados:
+App.js: Envoltorio principal con temas, gestos y Providers.
+src/context/DriverSessionContext.js: Contexto global de sesión, listener de Firestore y persistencia local.
+src/navigation/RootStack.js: Navegador Stack raíz con rutas condicionales según el estado del conductor.
+src/navigation/MainDrawer.js: Navegador Drawer con vista de perfil, vehículo y logout seguro.
+src/screens/PendingApprovalScreen.js: Pantalla de estado de cuenta reactiva (pending, approved, rejected).
+src/components/PlaceholderScreen.js: Pantalla base provisional reutilizable.
+src/screens/main/HomeScreen.js: Stub temporal para la rama de Camilo (Mapa y Disponibilidad).
+src/screens/main/HistoryScreen.js: Stub temporal para la rama de Sara (Historial de carreras).
+src/screens/main/EarningsScreen.js: Stub temporal para la rama de Sara (Totales y saldo).
+src/screens/main/ProfileScreen.js: Stub temporal para la vista de perfil y configuración.
+Commit:
+- 23c67fc Se instala  el Drawer de React Navigation
+- 380c914 Agrego  el contexto de sesión del conductor
+- 03d548d Agrego  el Drawer con sus secciones
+- 17dd0e2 Abre el inicio cuando la cuenta está aprobada
+
+Verificación:
+
+Flujo de primer ingreso: Sin driverId en AsyncStorage, la aplicación inicia de forma predeterminada en Welcome.
+Flujo de cuenta en revisión: Conductor registrado con estado pending: la app abre directamente en PendingApprovalScreen. Se valida que el switch Disponible permanezca bloqueado (disabled) y que presionar el botón atrás del dispositivo no permita volver a pantallas anteriores.
+Reacción en tiempo real: Al simular el cambio de estado del documento en la base de datos a approved, la pantalla PendingApprovalScreen actualiza automáticamente su tarjeta a "Cuenta aprobada" y habilita el botón "Ir al inicio".
+Navegación en el Drawer: Al pasar a Main, el Drawer muestra el nombre del conductor, foto o avatar por defecto, placa y modelo del vehículo. Todas las opciones (Inicio, Historial, Ganancias, Perfil) cargan sus respectivos placeholders sin errores de renderizado.
+Cierre de sesión seguro: Al pulsar "Cerrar sesión" en el pie del Drawer, se eliminan las llaves de AsyncStorage, se limpia el estado en memoria, se cancela la suscripción en tiempo real y el Stack se reinicia (reset) en Welcome.
+
+Aprendizaje:
+
+Control de acceso declarativo: La navegación no debe manejarse mediante redirecciones manuales dispersas, sino derivarse como una función pura del estado de autenticación y autorización del usuario (getInitialRoute), garantizando consistencia y previniendo accesos indebidos.
+Gestión responsable de conexiones en tiempo real: Los listeners de Firestore en React Native deben estar estrictamente acoplados al ciclo de vida del componente mediante funciones de limpieza (return () => unsubscribe()), evitando fugas de memoria o actualizaciones de estado sobre componentes desmontados.
+Estrategia de desarrollo modular en equipo: El uso de pantallas puente (PlaceholderScreen) con interfaces y contratos claros permite que la arquitectura base de navegación quede cerrada y validada sin bloquear el progreso de otros desarrolladores que trabajan en submódulos específico
+
  ## Entrada 8
 Fecha: 10 de noviembre de 2026
 Integrante:  Camilo Lopez 
 Herramienta: Claude VS
 Objetivo: Diseñar e implementar la arquitectura del backend de pagos para la aplicación móvil UberClone Conductor, integrando la pasarela de Mercado Pago (Checkout Pro en modo Sandbox) con Firebase Firestore (Firebase Admin SDK), garantizando que las credenciales sensibles y la lógica de validación de tarifas permanezcan estrictamente en el servidor.
+
 
 Prompt: "Estoy desarrollando el módulo de pagos para nuestra aplicación móvil de transporte (UberClone Conductor en Expo / React Native con Firebase Firestore). Necesito que me acompañes paso a paso en el diseño y construcción de un backend en Node.js y Express para procesar los cobros mediante Mercado Pago Checkout Pro (Sandbox).
 

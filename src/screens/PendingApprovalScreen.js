@@ -2,16 +2,14 @@
 // Escucha el conductor en tiempo real: si en Firestore se cambia status a 'approved', la pantalla se actualiza sola.
 // Mientras no esté aprobado, el interruptor Disponible está bloqueado.
 // AI-assisted: see docs/AI_LOG.md #3
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import AppButton from '../components/AppButton';
 import { DRIVER_STATUS } from '../constants/options';
-import { STORAGE_KEYS } from '../constants/storageKeys';
-import { getData, removeData } from '../services/asyncStorage';
-import { listenDriver } from '../services/driverService';
+import { useDriverSession } from '../context/DriverSessionContext'
 import { colors } from '../theme/colors';
 
 // Texto e ícono de cada estado de la cuenta
@@ -38,38 +36,26 @@ const STATUS_INFO = {
 
 export default function PendingApprovalScreen() {
   const navigation = useNavigation();
-  const [driver, setDriver] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // CONCEPTO: useEffect con función de limpieza para la suscripción en tiempo real
+  const {driver, isApproved, reloadSession, endSession } = useDriverSession();
+
+   // Al llegar desde el registro, la sesión se vuelve a leer para empezar a escuchar al conductor nuevo
   useEffect(() => {
-    let unsubscribe = null;
+    reloadSession();
+  }, [reloadSession]);
 
-    async function start() {
-      const driverId = await getData(STORAGE_KEYS.DRIVER_ID);
-      if (!driverId) {
-        setLoading(false);
-        return;
-      };
-      unsubscribe = listenDriver(driverId, (data) => {
-        setDriver(data);
-        setLoading(false);
-      });
-    };
+  // Cuando la cuenta está aprobada, pasa al inicio (Drawer) y ya no se puede volver a esta pantalla
+  function goHome() {
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  };
 
-    start();
-
-    // Al salir de la pantalla dejamos de escuchar a Firestore
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  // Solo para pruebas: borra la sesión y vuelve a la bienvenidad
+  // Solo para pruebas: borra la sesión y vuelve a la bienvenida
   async function registerAgain() {
-    await removeData(STORAGE_KEYS.DRIVER_ID);
+    await endSession();
     navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
   };
+
+  const loading = !driver;
 
   if (loading) {
     return (
@@ -81,7 +67,6 @@ export default function PendingApprovalScreen() {
   };
 
   const info = STATUS_INFO[driver?.status] ?? STATUS_INFO[DRIVER_STATUS.PENDING];
-  const isApproved = driver?.status === DRIVER_STATUS.APPROVED;
 
   return (
     <View style={styles.container}>
@@ -96,7 +81,7 @@ export default function PendingApprovalScreen() {
         <View style={styles.flex}>
           <Text style={styles.availabilityTitle}>Disponible</Text>
           <Text style={styles.availabilityText}>
-            {isApproved ? 'Se activa en la pantalla de inicio (entrega final).' : 'Bloqueado hasta que tu cuenta sea aprobada.'}
+            {isApproved ? 'Se activa en la pantalla de inicio.' : 'Bloqueado hasta que tu cuenta sea aprobada.'}
           </Text>
         </View>
         <Switch
@@ -107,10 +92,13 @@ export default function PendingApprovalScreen() {
         />
       </View>
 
+      {isApproved ? <AppButton title="Ir al inicio" onPress={goHome} /> : null}
+
       <AppButton title="Registrar otro conductor (pruebas)" variant="outline" onPress={registerAgain} />
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
