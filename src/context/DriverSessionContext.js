@@ -6,7 +6,11 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { DRIVER_STATUS } from '../constants/options';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { getData, removeData } from '../services/asyncStorage';
+ feature/inicio-mapa
 import { listenDriver, setDriverAvailability } from '../services/driverService';
+
+import { listenDriver } from '../services/driverService';
+ main
 
 // CONCEPTO: useContext. Se crea el contexto y un Provider que envuelve la app.
 export const DriverSessionContext = createContext(null);
@@ -54,16 +58,22 @@ export function DriverSessionProvider({ children }) {
 
   // Cerrar sesión: borra la sesión y las preferencias del conductor (no el idioma)
   const endSession = useCallback(async () => {
+ feature/inicio-mapa
     //AI-assisted: see docs/AI_LOG.md #7 (al cerrar sesión deja de estar Disponible)
     if(driverId) {
       await setDriverAvailability(driverId,false).catch((error) => console.log('Error al cerrar sesión', error));
     }
+
+main
     await removeData(STORAGE_KEYS.DRIVER_ID);
     await removeData(STORAGE_KEYS.LAST_AVAILABILITY);
     setActiveTrip(null);
     setDriver(null);
     setDriverId(null);
+  feature/inicio-mapa
   }, [driverId]);
+  }, []);
+  main
 
   const isApproved = driver?.status === DRIVER_STATUS.APPROVED;
 
