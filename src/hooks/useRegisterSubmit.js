@@ -1,19 +1,23 @@
 // Hook que envía el registro: sube las fotos a Cloudinary, guarda el conductor en Firestore
 // con estado Pendiente y guarda su id en AsyncStorage (sesión).
 // AI-assisted: see docs/AI_LOG.md #3
+// AI-assisted: see docs/AI_LOG.md #8 (pestaña 3: fotos y datos de documentos)
 import { useCallback, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 
+import { PRICING } from '../config/pricing';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useRegister } from '../context/RegisterContext';
 import { saveData } from '../services/asyncStorage';
 import { uploadImage } from '../services/cloudinaryService';
 import { createDriver } from '../services/driverService';
-import { normalizePlate } from '../utils/validators';
+import { needsTechReview, normalizePlate } from '../utils/validators';
 
 export default function useRegisterSubmit() {
   const navigation = useNavigation();
-  const { personal, vehicle, isPersonalValid, isVehicleValid, setShowAllErrors } = useRegister();
+  const {
+    personal, vehicle, documents, isPersonalValid, isVehicleValid, isDocumentsValid, setShowAllErrors,
+  } = useRegister();
 
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -22,16 +26,22 @@ export default function useRegisterSubmit() {
   const submit = useCallback(async () => {
     // Si algo falta, mostramos todos los errores debajo de los campos y no enviamos
     setShowAllErrors(true);
-    if (!isPersonalValid || !isVehicleValid) return;
+    if (!isPersonalValid || !isVehicleValid || !isDocumentsValid) return;
 
     setLoading(true);
     setSubmitError('');
 
     try {
-      // 1. Subir las dos fotos al mismo tiempo; Cloudinary devuelve sus URL
-      const [photoUrl, vehiclePhotoUrl] = await Promise.all([
+      const techReviewRequired = needsTechReview(vehicle.year);
+
+      // 1. Subir todas las fotos al mismo tiempo; Cloudinary devuelve sus URL.
+      //    La de la revisión técnico-mecánica solo se sube si aplica (si no, queda null).
+      const [photoUrl, vehiclePhotoUrl, licensePhotoUrl, soatPhotoUrl, techReviewPhotoUrl] = await Promise.all([
         uploadImage(personal.photo, 'perfil'),
         uploadImage(vehicle.vehiclePhoto, 'vehiculo'),
+        uploadImage(documents.licensePhoto, 'documentos'),
+        uploadImage(documents.soatPhoto, 'documentos'),
+        techReviewRequired ? uploadImage(documents.techReviewPhoto, 'documentos') : Promise.resolve(null),
       ]);
 
       // 2. Guardar en Firestore solo URL y datos limpios (nunca la imagen)
@@ -54,6 +64,21 @@ export default function useRegisterSubmit() {
           capacity: Number(vehicle.capacity),
           photoUrl: vehiclePhotoUrl,
         },
+        documents: {
+          licenseNumber: documents.licenseNumber,
+          licenseExpiry: documents.licenseExpiry,
+          licensePhotoUrl,
+          soatExpiry: documents.soatExpiry,
+          soatPhotoUrl,
+          techReviewRequired,
+          techReviewExpiry: techReviewRequired ? documents.techReviewExpiry : null,
+          techReviewPhotoUrl,
+        },
+        // Pagos: solo el correo de Mercado Pago (nunca cuentas bancarias ni tarjetas)
+        mercadoPagoEmail: documents.mercadoPagoEmail.trim().toLowerCase(),
+        // Comisión que aceptó al registrarse y cuándo la aceptó
+        commissionRate: PRICING.COMMISSION_RATE,
+        termsAcceptedAt: new Date(),
       });
 
       // 3. Sesión: guardamos el id para que al abrir la app vaya directo a la cuenta pendiente
@@ -67,7 +92,7 @@ export default function useRegisterSubmit() {
     } finally {
       setLoading(false);
     };
-  }, [personal, vehicle, isPersonalValid, isVehicleValid, setShowAllErrors, navigation]);
+  }, [personal, vehicle, documents, isPersonalValid, isVehicleValid, isDocumentsValid, setShowAllErrors, navigation]);
 
   return { submit, loading, submitError };
 };
