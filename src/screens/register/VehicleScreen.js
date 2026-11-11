@@ -1,9 +1,11 @@
 // Pestaña 2 - Vehículo.
 // Los datos se guardan en el contexto del registro; las validaciones vienen de utils/validators.js.
 // AI-assisted: see docs/AI_LOG.md #3
-import React, { useRef } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
+import AppButton from '../../components/AppButton';
 import FormField from '../../components/form/FormField';
 import ImageField from '../../components/form/ImageField';
 import SelectField from '../../components/form/SelectField';
@@ -18,9 +20,23 @@ const cleanPlate = (text) => text.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 export default function VehicleScreen() {
   // CONCEPTO: useContext. Leemos y cambiamos los datos compartidos del registro.
-  const { vehicle, updateVehicle, vehicleErrors, getError } = useRegister();
+  const { vehicle, updateVehicle, vehicleErrors, isVehicleValid, getError } = useRegister();
 
-  const errorOf = (field) => getError(vehicleErrors, field);
+  const navigation = useNavigation();
+
+  // true cuando tocó Continuar con campos incompletos: desde ahí se muestran todos los errores de esta pestaña
+  const [triedToContinue, setTriedToContinue] = useState(false);
+
+  const errorOf = (field) => (triedToContinue ? [field] : getError(vehicleErrors, field));
+
+  function goToDocuments() {
+    if (!isVehicleValid) {
+      setTriedToContinue(true);
+      return;
+    };
+    navigation.navigate('Documents');
+  };
+
 
   // Referencias para pasar al siguiente campo con el botón "Siguiente" del teclado
   const brandRef = useRef(null);
@@ -128,6 +144,13 @@ export default function VehicleScreen() {
           onChange={(uri) => updateVehicle('vehiclePhoto', uri)}
           error={errorOf('vehiclePhoto')}
         />
+        {/* Botón para pasar a la siguiente pestaña */}
+        <View style={styles.continue}>
+          {triedToContinue && !isVehicleValid ? (
+            <Text style={styles.continueError}>Revisa los campos marcados en rojo.</Text>
+          ) : null}
+          <AppButton title="Continuar a Documentos" onPress={goToDocuments} />
+        </View>
     </ScrollView>
   );
 };
@@ -150,5 +173,14 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
     marginTop: 4,
     marginBottom: 20,
+  },
+  continue: {
+    marginTop: 8,
+    gap: 8,
+  },
+  continueError: {
+    fontSize: 14,
+    color: colors.error,
+    textAlign: 'center',
   },
 });
