@@ -292,11 +292,66 @@ Control de acceso declarativo: La navegación no debe manejarse mediante redirec
 Gestión responsable de conexiones en tiempo real: Los listeners de Firestore en React Native deben estar estrictamente acoplados al ciclo de vida del componente mediante funciones de limpieza (return () => unsubscribe()), evitando fugas de memoria o actualizaciones de estado sobre componentes desmontados.
 Estrategia de desarrollo modular en equipo: El uso de pantallas puente (PlaceholderScreen) con interfaces y contratos claros permite que la arquitectura base de navegación quede cerrada y validada sin bloquear el progreso de otros desarrolladores que trabajan en submódulos específico
 
+feature/inicio-mapa
+
+## Entrada 7: Pantalla de inicio con mapa interactivo, gestión de disponibilidad y seguimiento de ubicación en tiempo real
+Fecha: 9 de noviembre de 2026
+Integrante: Camilo López (Lopezal00)
+Herramienta: Claude VS
+Objetivo: Implementar la pantalla principal (HomeScreen) del conductor con visualización de mapa interactivo (react-native-maps), control de disponibilidad mediante interruptor ("Disponible" / "No disponible" supeditado a la aprobación de la cuenta), solicitud y gestión de permisos de geolocalización, y el hook personalizado useDriverLocation para emitir la ubicación periódica a Firestore en tiempo real únicamente mientras el conductor esté activo y visualizando la pantalla.
+Prompt: "Necesito implementar la funcionalidad de la pantalla de Inicio (HomeScreen) para la app de conductor en React Native con Expo dentro de la rama 'rama-inicio-mapa'. La pantalla debe mostrar un mapa con MapView de react-native-maps centrado en la ubicación del conductor (o Medellín por defecto). Debe incluir una tarjeta inferior flotante con un Switch de disponibilidad ('Estás disponible' / 'No disponible'). Solo si el conductor está aprobado en Firestore (obtenido desde useDriverSession) se le permite encender el Switch. Crea un custom hook useDriverLocation que solicite permisos en primer plano con expo-location, capture la ubicación inicial y, cuando tracking sea true (solo si está disponible y en foco de navegación con useIsFocused), ejecute watchPositionAsync cada 5 segundos o 10 metros para actualizar las coordenadas en Firestore (updateDriverLocation). Si el usuario deniega los permisos, muestra un banner persistente con enlace a Ajustes del dispositivo usando Linking.openSettings(). Además, guarda la preferencia de disponibilidad en AsyncStorage para restaurarla al reabrir la app, y en DriverSessionContext asegura que al invocar endSession se desactive la disponibilidad en Firestore y se limpie el storage. Incluye comentarios educativos de conceptos clave como useEffect con cleanup, useCallback y optimizaciones de render."
+Resumen de la respuesta: La IA entregó la solución modular en 5 partes:
+HomeScreen.js: Integración del MapView con animaciones de cámara (animateToRegion), banner de aviso si se deniegan permisos con enlace a Ajustes (Linking.openSettings()), tarjeta inferior con feedback visual (indicador circular verde/gris según disponibilidad), y control del Switch restringido por aprobación (!isApproved) y permisos. Persistencia local del último estado en AsyncStorage.
+useDriverLocation.js: Custom Hook con dos efectos useEffect: uno inicial para pedir permisos y obtener la posición inicial (getCurrentPositionAsync), y un segundo efecto condicionado a tracking que inicia la suscripción de rastreo (Location.watchPositionAsync con intervalo de 5000 ms y 10 m), cancelando el watcher en la función de limpieza (subscription.remove()).
+driverService.js: Métodos setDriverAvailability (actualiza isAvailable y availabilityUpdatedAt) y updateDriverLocation (actualiza location: { lat, lng } y locationUpdatedAt).
+DriverSessionContext.js: Actualización de la función endSession para apagar la disponibilidad en Firestore (setDriverAvailability(driverId, false)) y eliminar STORAGE_KEYS.LAST_AVAILABILITY.
+app.json: Configuración del plugin expo-location con el mensaje de permiso para iOS y Android.
+Enlace: Chat del IDE / Sesión local de asistencia
+Qué se usó / modificó / descartó:
+Qué se usó:
+expo-location (requestForegroundPermissionsAsync, getCurrentPositionAsync, watchPositionAsync).
+react-native-maps (MapView, animateToRegion imperativo con useRef).
+Hooks de React: useState, useEffect (con funciones de retorno/limpieza para evitar fugas de memoria), useCallback y useRef.
+useIsFocused de @react-navigation/native para pausar el rastreo si el conductor cambia de sección en el Drawer.
+useSafeAreaInsets de react-native-safe-area-context para dar margen a la tarjeta inferior.
+AsyncStorage para recordar la última preferencia de disponibilidad sin almacenar datos sensibles.
+Qué se modificó:
+src/services/driverService.js: se añadieron las funciones setDriverAvailability y updateDriverLocation.
+src/context/DriverSessionContext.js: se integró el apagado de disponibilidad al cerrar sesión.
+app.json: se añadió la configuración del plugin expo-location.
+Qué se descartó:
+Se descartó el seguimiento en segundo plano con expo-task-manager para simplificar el MVP y evitar consumo excesivo de batería y permisos invasivos.
+Se descartó esperar (await) cada actualización en el watcher de ubicación para no bloquear la interfaz en caso de latencia o desconexión intermitente.
+Se descartó permitir el cambio de disponibilidad si el conductor no cuenta con el estado DRIVER_STATUS.APPROVED.
+Archivos y commit:
+Archivos:
+src/screens/main/HomeScreen.js
+src/hooks/useDriverLocation.js
+src/services/driverService.js
+src/context/DriverSessionContext.js
+app.json
+Rama: rama-inicio-mapa
+Commit sugerido:  implementar mapa, switch de disponibilidad y rastreo de ubicacion #7
+Verificación:
+Se probó el rechazo de permisos de geolocalización, mostrando el banner de advertencia y comprobando que el enlace a Ajustes del sistema (Linking.openSettings()) responda.
+Con permisos otorgados, el mapa se centró y animó correctamente a las coordenadas del conductor con delta de zoom 0.01.
+Se validó que el switch permanezca inhabilitado si el estado del conductor no es APPROVED.
+Al encender "Disponible", se corroboró en Firestore la creación/actualización de los campos isAvailable: true y availabilityUpdatedAt.
+Se comprobó que el watcher envíe actualizaciones periódicas a Firestore (location y locationUpdatedAt) y que al navegar a otra pantalla (isFocused: false) o apagar el switch se ejecute la limpieza del watcher (watcher.remove()), deteniendo el consumo de GPS.
+Se verificó que al cerrar sesión en el menú de usuario, el conductor pase a estar no disponible automáticamente en la base de datos.
+Aprendizaje:
+La importancia de desacoplar la lógica de APIs nativas en un Custom Hook (useDriverLocation) para mantener la pantalla (HomeScreen) limpia y enfocada en la presentación.
+El uso de la condición tracking: isAvailable && isFocused para proteger la batería del dispositivo y evitar lecturas y escrituras innecesarias en Firestore.
+La gestión del ciclo de vida en useEffect con banderas (active, cancelled) y funciones de limpieza (subscription.remove()) para evitar actualizaciones de estado sobre componentes desmontados o suscripciones huérfanas.
+
+
+main
  ## Entrada 8
 Fecha: 10 de noviembre de 2026
 Integrante:  Camilo Lopez 
 Herramienta: Claude VS
 Objetivo: Diseñar e implementar la arquitectura del backend de pagos para la aplicación móvil UberClone Conductor, integrando la pasarela de Mercado Pago (Checkout Pro en modo Sandbox) con Firebase Firestore (Firebase Admin SDK), garantizando que las credenciales sensibles y la lógica de validación de tarifas permanezcan estrictamente en el servidor.
+main
 
 
 Prompt: "Estoy desarrollando el módulo de pagos para nuestra aplicación móvil de transporte (UberClone Conductor en Expo / React Native con Firebase Firestore). Necesito que me acompañes paso a paso en el diseño y construcción de un backend en Node.js y Express para procesar los cobros mediante Mercado Pago Checkout Pro (Sandbox).
