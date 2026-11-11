@@ -292,7 +292,6 @@ Control de acceso declarativo: La navegación no debe manejarse mediante redirec
 Gestión responsable de conexiones en tiempo real: Los listeners de Firestore en React Native deben estar estrictamente acoplados al ciclo de vida del componente mediante funciones de limpieza (return () => unsubscribe()), evitando fugas de memoria o actualizaciones de estado sobre componentes desmontados.
 Estrategia de desarrollo modular en equipo: El uso de pantallas puente (PlaceholderScreen) con interfaces y contratos claros permite que la arquitectura base de navegación quede cerrada y validada sin bloquear el progreso de otros desarrolladores que trabajan en submódulos específico
 
-feature/inicio-mapa
 
 ## Entrada 7: Pantalla de inicio con mapa interactivo, gestión de disponibilidad y seguimiento de ubicación en tiempo real
 Fecha: 9 de noviembre de 2026
@@ -345,13 +344,11 @@ El uso de la condición tracking: isAvailable && isFocused para proteger la bate
 La gestión del ciclo de vida en useEffect con banderas (active, cancelled) y funciones de limpieza (subscription.remove()) para evitar actualizaciones de estado sobre componentes desmontados o suscripciones huérfanas.
 
 
-main
- ## Entrada 8
+## Entrada 8
 Fecha: 10 de noviembre de 2026
 Integrante:  Camilo Lopez 
 Herramienta: Claude VS
 Objetivo: Diseñar e implementar la arquitectura del backend de pagos para la aplicación móvil UberClone Conductor, integrando la pasarela de Mercado Pago (Checkout Pro en modo Sandbox) con Firebase Firestore (Firebase Admin SDK), garantizando que las credenciales sensibles y la lógica de validación de tarifas permanezcan estrictamente en el servidor.
-main
 
 
 Prompt: "Estoy desarrollando el módulo de pagos para nuestra aplicación móvil de transporte (UberClone Conductor en Expo / React Native con Firebase Firestore). Necesito que me acompañes paso a paso en el diseño y construcción de un backend en Node.js y Express para procesar los cobros mediante Mercado Pago Checkout Pro (Sandbox).
