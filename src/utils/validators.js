@@ -96,7 +96,10 @@ export const validateYear = (value) => {
   if (!value) return 'Escribe el año del vehículo';
   if (!/^[0-9]{4}$/.test(value)) return 'Debe tener 4 dígitos';
   const year = Number(value);
-  if (year > new Date().getFullYear()) return 'No puede ser mayor al año actual';
+  // Indicación de la profe: se acepta hasta un año más que el actual,
+  // porque los carros nuevos se venden con el modelo del año siguiente (ej. en 2026 un modelo 2027)
+  const maxYear = new Date().getFullYear() + 1;
+  if (year > maxYear) return `No puede ser mayor a ${maxYear}`;
   if (year < 1950) return 'Escribe un año válido';
   return '';
 };
@@ -124,6 +127,52 @@ export const validateVehicle = (data) => ({
   capacity: validateCapacity(data.capacity, data.category),
   vehiclePhoto: required(data.vehiclePhoto, 'Agrega una foto del vehículo donde se vea la placa'),
 });
+
+// ---------- Pestaña 3: Documentos y pagos ----------
+// AI-assisted: see docs/AI_LOG.md #8
+
+// Un carro particular en Colombia hace su primera revisión técnico-mecánica a los 5 años de matriculado
+export const TECH_REVIEW_AFTER_YEARS = 5;
+
+// ¿El vehículo necesita revisión técnico-mecánica según su año?
+export const needsTechReview = (vehicleYear) => {
+  const year = Number(vehicleYear);
+  if (!year) return false; // si aún no escribe el año, no la pedimos
+  return new Date().getFullYear() - year >= TECH_REVIEW_AFTER_YEARS;
+};
+
+// La fecha de vencimiento debe ser posterior a hoy (desde mañana en adelante)
+export const validateExpiryDate = (value, document) => {
+  if (!value) return `Selecciona la fecha de vencimiento ${document}`;
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  if (value <= endOfToday) return 'Está vencido o vence hoy: la fecha debe ser posterior a hoy';
+  return '';
+};
+
+export const validateLicenseNumber = (value) => {
+  if (!value) return 'Escribe el número de la licencia';
+  if (!/^[0-9]+$/.test(value)) return 'Solo se permiten números';
+  if (value.length < 6 || value.length > 12) return 'Debe tener entre 6 y 12 dígitos';
+  return '';
+};
+
+// Devuelve un objeto con el error de cada campo de la pestaña 3.
+// vehicleYear viene de la pestaña 2: decide si la revisión técnico-mecánica es obligatoria.
+export const validateDocuments = (data, vehicleYear) => {
+  const techReviewRequired = needsTechReview(vehicleYear);
+  return {
+    licenseNumber: validateLicenseNumber(data.licenseNumber),
+    licenseExpiry: validateExpiryDate(data.licenseExpiry, 'de la licencia'),
+    licensePhoto: required(data.licensePhoto, 'Agrega una foto de la licencia'),
+    soatExpiry: validateExpiryDate(data.soatExpiry, 'del SOAT'),
+    soatPhoto: required(data.soatPhoto, 'Agrega una foto del SOAT'),
+    techReviewExpiry: techReviewRequired ? validateExpiryDate(data.techReviewExpiry, 'de la revisión') : '',
+    techReviewPhoto: techReviewRequired ? required(data.techReviewPhoto, 'Agrega una foto de la revisión técnico-mecánica') : '',
+    mercadoPagoEmail: validateEmail(data.mercadoPagoEmail),
+    termsAccepted: data.termsAccepted ? '' : 'Debes aceptar los términos para continuar',
+  };
+};
 
 // Un objeto de errores es válido si ninguno tiene mensaje
 export const isValid = (errors) => Object.values(errors).every((message) => message === '');

@@ -31,11 +31,11 @@ const TITLES = {
 
 export default function RegisterTabs() {
   // AI-assisted: see docs/AI_LOG.md #3
-  const { isPersonalValid, isVehicleValid } = useRegister();
+  const { isPersonalValid, isVehicleValid, isDocumentsValid } = useRegister();
   const { submit, loading, submitError } = useRegisterSubmit();
 
   // Una pestaña completa y válida muestra un check verde en lugar de su ícono
-  const isComplete = { PersonalData: isPersonalValid, Vehicle: isVehicleValid, Documents: false };
+  const isComplete = { PersonalData: isPersonalValid, Vehicle: isVehicleValid, Documents: isDocumentsValid };
 
   return (
     <Tab.Navigator

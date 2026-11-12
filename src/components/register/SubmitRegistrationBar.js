@@ -10,16 +10,20 @@ import { colors } from '../../theme/colors';
 
 // onSubmit: función que envía el registro. loading: muestra el indicador. submitError: error al enviar.
 export default function SubmitRegistrationBar({ onSubmit, loading, submitError }) {
-  const { isPersonalValid, isVehicleValid } = useRegister();
+  const { isPersonalValid, isVehicleValid, isDocumentsValid } = useRegister();
 
-  // Entrega 1: pestañas 1 y 2. En la entrega final se suma la pestaña 3 (Documentos).
-  const canSubmit = isPersonalValid && isVehicleValid;
+  // AI-assisted: see docs/AI_LOG.md #8
+  // Solo se puede enviar cuando las TRES pestañas están completas y válidas
+  const canSubmit = isPersonalValid && isVehicleValid && isDocumentsValid;
 
-  // Le dice al conductor qué le falta para poder enviar
+  // Le dice al conductor qué pestañas le faltan, por ejemplo: "Completa Vehículo y Documentos"
+  const pending = [];
+  if (!isPersonalValid) pending.push('Datos personales');
+  if (!isVehicleValid) pending.push('Vehículo');
+  if (!isDocumentsValid) pending.push('Documentos');
   let missing = '';
-  if (!isPersonalValid && !isVehicleValid) missing = 'Completa Datos personales y Vehículo';
-  else if (!isPersonalValid) missing = 'Completa Datos personales';
-  else if (!isVehicleValid) missing = 'Completa Vehículo';
+  if (pending.length === 1) missing = `Completa ${pending[0]}`;
+  if (pending.length > 1) missing = `Completa ${pending.slice(0, -1).join(', ')} y ${pending[pending.length - 1]}`;
 
   return (
     <View style={styles.bar}>
