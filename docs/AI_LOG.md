@@ -433,6 +433,93 @@ Patrón de Re-consulta en Webhooks: Frente a eventos asíncronos externos, no ba
 Diseño orientado a la experiencia de desarrollo (DX): Al diseñar un flujo dependiente de webhooks (que requiere túneles HTTPS públicos), proveer un mecanismo simétrico de sondeo o verificación manual simplifica drásticamente el desarrollo y la depuración en red local.
 Mapeo explícito de estados: Es esencial desacoplar los estados propios del proveedor de pagos (approved, in_process, rejected) de la máquina de estados de negocio de la aplicación (pending, completed, paid).
 
+
+Fecha: 11/11/2026
+Integrante: Camilo Lopez
+Herramienta: Code VS 
+Objetivo: Diseñar e implementar la arquitectura del flujo integral de viajes para el conductor en la app móvil UberClone Conductor (React Native / Expo + Firebase Firestore), abarcando la escucha reactiva y aceptación concurrente de solicitudes con temporizador regresivo de 15 segundos, cálculo y renderizado de rutas mediante OSRM con contingencia offline, simulador de pasajero y recorrido para pruebas, liquidación pura de tarifas y pantalla de cobro multimetodológica (efectivo y pasarela de pago).
+Prompt: "Hola. Estoy desarrollando el módulo principal de viajes (rama-viaje) para una aplicación móvil de conductor tipo Uber (UberClone Conductor) utilizando React Native con Expo y Firebase Firestore como backend. No quiero que me des el código completo ni que me resuelvas el trabajo directamente. Quiero que actúes como mi Tech Lead / Desarrollador Senior y me aconsejes sobre buenas prácticas de arquitectura, patrones de diseño y posibles problemas que deba anticipar antes y durante la codificación.
+
+Específicamente, requiero tu criterio senior sobre los siguientes puntos:
+
+Gestión de concurrencia y asignación: ¿Cuál es la forma más limpia y robusta de manejar la aceptación de una solicitud en Firestore para evitar condiciones de carrera (por ejemplo, si dos conductores aceptan el mismo viaje exactamente al mismo tiempo)? ¿Debería usar transacciones (runTransaction), reglas de seguridad o batches?
+Máquina de estados del viaje: ¿Cómo me recomiendas modelar el ciclo de vida del viaje (requested, accepted, driver_arriving, in_progress, completed, paid, rejected) en la colección de Firestore y en la navegación de la app para que la transición entre pantallas sea fluida y no permita volver atrás accidentalmente una vez iniciado o cobrado el servicio?
+UX del temporizador de solicitudes: Necesito que el conductor reciba una tarjeta de solicitud flotante con una cuenta regresiva de 15 segundos que se rechace automáticamente al llegar a cero, con retroalimentación visual urgente en los últimos 5 segundos y alertas de accesibilidad/vibración. ¿Cómo diseño este componente y su hook para no generar re-renders innecesarios en la pantalla principal ni fugas de memoria con los intervalos?
+Estrategia de mapas y ruteo económico/gratuito: Para no incurrir en costos de Google Maps API / Directions, planeo integrar OSRM (Open Source Routing Machine). ¿Qué precauciones debo tomar al consumir esta API pública y cómo diseño un mecanismo de contingencia (fallback) para que la app no quede congelada si la API falla o no hay conexión de datos en la calle?
+Estrategia de pruebas sin app de pasajero: Actualmente aún no tenemos lista la app del pasajero. ¿Cómo me sugieres estructurar un simulador de solicitudes aleatorias cercanas y una simulación de recorrido sobre la polilínea en el mapa para poder grabar demos y validar el flujo de punta a punta sin tener que salir a conducir físicamente?
+Lógica de liquidación y finanzas: ¿Cómo estructurar el cálculo de tarifas (tarifa base, distancia recorrida, tiempo, multiplicadores por categoría como Economy, XL, Premium, tarifa mínima y comisión del 20%) para que sea una función pura y reutilizable tanto en la estimación inicial como en el cobro final, garantizando que las propinas queden 100% libres de comisión?
+Flujo de cobro y seguridad en pagos: En la pantalla de liquidación debemos permitir pago en efectivo y pago digital con Mercado Pago. ¿Cómo desacoplar la aplicación móvil de las credenciales sensibles y cómo estructurar la verificación del pago (polling/webhooks) para que el conductor no pueda confirmar cobros indebidos?
+
+Por favor, enfócate en aconsejarme sobre la separación de responsabilidades (servicios, hooks, componentes), manejo de suscripciones en tiempo real (onSnapshot) con su respectiva limpieza, y advertencias sobre errores típicos que un junior suele cometer en este tipo de apps."
+
+Resumen de la respuesta: El Senior recomendó una arquitectura modular desacoplada basada en servicios y hooks personalizados, orientada a la robustez y tolerancia a fallos:
+Concurrencia atómica: Implementar obligatoriamente runTransaction de Firestore para la aceptación de solicitudes. La transacción lee primero el documento trips/{tripId} dentro del contexto atómico; si el estado ya no es requested, aborta la operación arrojando un error controlado ("Esta solicitud ya no está disponible"), previniendo doble asignación.
+Máquina de estados y navegación: Modelar los estados del viaje de manera secuencial (requested → accepted → driver_arriving → in_progress → completed → paid) y sobreponer la pantalla Trip y Payment sobre el RootStack con propiedades de bloqueo de gestos (gestureEnabled: false) y sin botón de retroceso (headerBackVisible: false) en cobro para forzar el flujo natural del servicio.
+Temporizador y Accesibilidad: Aislar la tarjeta RequestCard con un setInterval interno de corta duración (250 ms) que recalcula la diferencia de tiempo respecto al createdAt del viaje en lugar de restar un contador simple (evitando desincronizaciones por pausas del sistema operativo). Añadir Vibration.vibrate(400) y AccessibilityInfo.announceForAccessibility en la recepción del viaje, e invocar el auto-rechazo una sola vez mediante banderas con useRef.
+Ruteo resiliente: Consumir OSRM transformando la geometría GeoJSON [lng, lat] a coordenadas compatibles con react-native-maps ({ latitude, longitude }), encapsulado en un bloque try/catch. En caso de fallo o timeout de red, activar inmediatamente una función de respaldo que calcula la distancia mediante la fórmula de Haversine trazando una línea recta con un factor de corrección urbano (+30% de distancia y velocidad estimada a 25 km/h).
+Simulación desacoplada para QA: Crear un servicio independiente (simulatorService.js) que genere coordenadas geográficas aleatorias en un radio de 0.3 a 1.2 km del conductor, obtenga direcciones legibles mediante Location.reverseGeocodeAsync e inserte la solicitud en Firestore con el flag isSimulated: true. Para la conducción, crear el hook useSimulatedDrive que recorra la polilínea en 25 pasos temporizados actualizando las coordenadas del conductor en Firestore cada 3 iteraciones.
+Funciones puras y números enteros: Configurar los parámetros tarifarios en una constante inmutable (pricing.js) y aislar calculateFare como una función matemática pura sin efectos secundarios, redondeando siempre a múltiplos enteros de 100 COP para evitar problemas de coma flotante en JavaScript y asegurando que driverEarnings = (fare - commission) + tip.
+Seguridad en pagos: Prohibir terminantemente que el cliente móvil maneje secretos de pasarelas. La app solo envía el tripId a un endpoint propio del backend (/payments/preference), abre el checkout mediante expo-web-browser y escucha cambios reactivos del estado del pago vía onSnapshot o consulta a /payments/status/:tripId. Permitir cambio dinámico a efectivo si el pago digital es rechazado.
+Enlace: 
+Qué se usó / modificó / descartó:
+Qué se usó:
+runTransaction de Firebase Firestore para asignación y descarte atómico de viajes en contienda.
+onSnapshot con retornos de desuscripción (unsubscribe) dentro de useEffect en useTripRequests.js, TripScreen.js y PaymentScreen.js.
+API pública de OSRM (router.project-osrm.org) con decodificación GeoJSON y fallback matemático local con fórmula de Haversine (routeService.js).
+MapView, Polyline y marcadores dinámicos (Marker) de react-native-maps para representar al pasajero, destino y ubicación del vehículo en tiempo real.
+Componentes de accesibilidad nativa (Vibration, AccessibilityInfo, etiquetas ARIA) en RequestCard.js.
+Hooks useTripRequests (filtrado y cola de solicitudes reactivas) y useSimulatedDrive (interpolación de movimiento vehicular en 25 pasos).
+expo-web-browser para abrir la pasarela de Mercado Pago de forma segura dentro del ciclo de vida de la aplicación.
+Función pura calculateFare con manejo de redondeos en pesos colombianos (COP).
+Qué se modificó:
+src/screens/main/HomeScreen.js: Se incorporó la escucha de solicitudes activas mientras el conductor esté disponible y enfocado, integrando el modal de RequestCard y el botón de simulación de pasajero.
+src/navigation/RootStack.js: Se añadieron las rutas 'Trip' (TripScreen) y 'Payment' (PaymentScreen) en la pila raíz por encima del MainDrawer.
+src/constants/options.js: Se agregaron los diccionarios y constantes de TRIP_STATUS, PAYMENT_METHODS, PAYMENT_METHOD_LABELS y REQUEST_TIMEOUT_SECONDS = 15.
+Qué se descartó:
+Se descartó el uso de Google Directions API por motivos de costos y requisitos de facturación con tarjeta de crédito, optando por OSRM con contingencia local.
+Se descartó la comunicación directa desde el frontend móvil hacia las APIs de Mercado Pago con credenciales privadas por vulnerabilidad de seguridad.
+Se descartó el uso de consultas periódicas por polling (setInterval) hacia Firestore, reemplazándolo por suscripciones reactivas en tiempo real mediante onSnapshot.
+Se descartó permitir la modificación de propinas una vez generado el checkout de Mercado Pago para evitar discrepancias de saldos contra la preferencia creada.
+Archivos y commit:
+Archivos involucrados:
+src/components/trip/RequestCard.js (UI de la solicitud entrante con temporizador y auto-rechazo)
+src/screens/trip/TripScreen.js (Pantalla del viaje en curso, rutas OSRM, marcadores y cambio de estados)
+src/screens/trip/PaymentScreen.js (Liquidación, desglose de tarifa/comisión, propinas y pasarela de cobro)
+src/screens/main/HomeScreen.js (Integración de disponibilidad, recepción de solicitudes y disparador de simulación)
+src/navigation/RootStack.js (Registro de pantallas de flujo de viaje Trip y Payment)
+src/services/tripService.js (Transacciones Firestore, escucha en tiempo real, actualización de estados y confirmación)
+src/services/routeService.js (Consumo de OSRM, cálculo de distancia Haversine y fallback de línea recta)
+src/services/simulatorService.js (Generación de solicitudes de pasajero simuladas con geocodificación inversa)
+src/services/paymentService.js (Cliente HTTP para backend de preferencias y verificación de estado de pago)
+src/hooks/useTripRequests.js (Hook de escucha reactiva y ordenamiento por antigüedad de viajes solicitados)
+src/hooks/useSimulatedDrive.js (Hook de animación paso a paso del auto a lo largo de la ruta)
+src/config/pricing.js (Parámetros del tarifario, factores por categoría y porcentaje de comisión)
+src/utils/calculateFare.js (Función pura de liquidación de tarifa, comisión y ganancia neta)
+src/constants/options.js (Definición de estados de viaje, métodos de pago y timeout)
+src/utils/format.js (Utilidades de formateo visual para moneda COP, kilómetros y minutos)
+src/config/backend.js (Definición de variable de entorno para URL del backend de pagos)
+Commit sugerido:
+- 4ee18ab (HEAD -> feature/viaje) Agrega el cobro en efectivo y Mercado Pago
+- 8cdd496 Agrega el viaje en curso con ruta y estados
+- f5d3481 Agrega las solicitudes con temporizador de 15 s
+- 9eef772 Agrega rutas con OSRM, servicio de viajes y simulador de pasajero
+- d506d7d  Se Agrega estados del viaje y formatos
+- 706e7e0 Se Instala expo-web-browser para el checkout
+
+Simulación de solicitud: Desde HomeScreen, se presionó "Simular solicitud de pasajero (pruebas)"; se verificó en Firestore la creación inmediata del documento en la colección trips con estado requested, geocodificación inversa del origen/destino y tarifa estimada.
+Temporizador y rechazo: En RequestCard, se comprobó la cuenta regresiva fluida desde 15 s, la vibración del dispositivo, el cambio de barra y texto a color rojo en los últimos 5 s y la ejecución automática del rechazo en Firestore al llegar a 0 s.
+Concurrencia: Se validó la ejecución de acceptTrip con runTransaction, comprobando que solo el primer conductor asigna el viaje y que intentos simultáneos posteriores reciben la excepción controlada.
+Ruta y navegación: En TripScreen, se verificó la consulta a OSRM para dibujar la polilínea entre la posición del conductor y el origen del pasajero. Se simuló una desconexión de red y se comprobó que el fallback Haversine generó la ruta en línea recta sin interrumpir la app.
+Simulación de conducción: Se activó el botón "Simular recorrido"; el vehículo recorrió los 25 puntos sobre la polilínea actualizando su latitud/longitud en Firestore cada 3 pasos.
+Transición de estados: Se presionó "Pasajero a bordo" pasando a in_progress con recálculo de ruta hacia el destino, y posteriormente "Finalizar viaje", navegando de forma automática a PaymentScreen.
+Liquidación y cobro: En PaymentScreen, se verificó el cálculo matemático de la tarifa, comisión del 20% y adición de propinas ($2.000 / $5.000 COP) sin deducción de comisión. Se probó el cobro en efectivo marcando el viaje como paid, y se validó la apertura del navegador externo para Mercado Pago.
+Aprendizaje:
+El uso indispensable de transacciones (runTransaction) para resolver problemas de concurrencia y condiciones de carrera en bases de datos NoSQL distribuidas en tiempo real.
+La importancia de diseñar arquitecturas tolerantes a fallos con estrategias de contingencia (fallbacks offline / matemáticos locales), garantizando que la aplicación continúe operativa aun si servicios externos de terceros (OSRM o pasarelas) se caen o tienen latencia.
+La ventaja de estructurar la lógica financiera mediante funciones puras inmutables (calculateFare), lo que previene inconsistencias entre las estimaciones mostradas al pasajero y los montos finales debitados al conductor.
+El valor de construir simuladores de entorno temprano (simulatorService y useSimulatedDrive) para permitir ciclos de desarrollo ágiles e independientes cuando los módulos complementarios (app del pasajero) se construyen en paralelo.
+La necesidad estricta de limpiar suscripciones (unsubscribe) e intervalos (clearInterval) en hooks de ciclo de vida en React Native para evitar sobrecostos de lecturas en Firestore y degradación de rendimiento por fugas de memoria.
+
 <!-- Plantilla para copiar en cada nueva entrada:
 
 ###
