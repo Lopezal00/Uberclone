@@ -8,8 +8,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import MainDrawer from './MainDrawer';
 import RegisterTabs from './RegisterTabs';
-import { useDriverSession } from '../context/DriverSessionContext';
+import { useDriverSession } from '../context/DriverSessionContext';;
 import PendingApprovalScreen from '../screens/PendingApprovalScreen';
+import PaymentScreen from '../screens/trip/PaymentScreen';
+import TripScreen from '../screens/trip/TripScreen';
 import WelcomeScreen from '../screens/WelcomeScreens';
 import { colors } from '../theme/colors';
 
@@ -51,6 +53,13 @@ export default function RootStack() {
       />
       {/* El Drawer tiene su propio header con el botón de menú */}
       <Stack.Screen name="Main" component={MainDrawer} options={{ headerShown: false, gestureEnabled: false }} />
+      {/* AI-assisted: see docs/AI_LOG.md #9. Flujo del viaje, encima del Drawer */}
+      <Stack.Screen name="Trip" component={TripScreen} options={{ title: 'Viaje en curso', headerBackTitle: 'Inicio' }} />
+      <Stack.Screen
+        name="Payment"
+        component={PaymentScreen}
+        options={{ title: 'Cobro', headerBackVisible: false, gestureEnabled: false }}
+      />
     </Stack.Navigator>
   );
 };
