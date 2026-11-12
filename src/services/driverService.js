@@ -59,3 +59,10 @@ export const updateDriverLocation = async (driverId, { lat, lng }) => {
   });
 };
 
+// ---------- Perfil ----------
+// AI-assisted: see docs/AI_LOG.md #10
+
+// Actualiza los datos editables del perfil (correo, celular, idioma)
+export const updateDriverProfile = async (driverId, data) => {
+  await updateDoc(doc(db, DRIVERS, driverId), { ...data, updatedAt: new Date() });
+};
