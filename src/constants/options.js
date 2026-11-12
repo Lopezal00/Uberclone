@@ -39,3 +39,32 @@ export const DRIVER_STATUS = {
   APPROVED: 'approved', // puede ponerse Disponible
   REJECTED: 'rejected',
 };
+
+// ---------- Viajes ----------
+// AI-assisted: see docs/AI_LOG.md #19
+
+// Estados de un viaje (campo status en la colección trips)
+export const TRIP_STATUS = {
+  REQUESTED: 'requested', // el pasajero pidió el viaje: les llega a los conductores disponibles
+  ACCEPTED: 'accepted', // un conductor lo aceptó
+  DRIVER_ARRIVING: 'driver_arriving', // el conductor va hacia el pasajero
+  IN_PROGRESS: 'in_progress', // pasajero a bordo, rumbo al destino
+  COMPLETED: 'completed', // llegaron al destino: falta cobrar
+  PAID: 'paid', // cobrado
+  REJECTED: 'rejected', // el conductor la rechazó o se acabaron los 15 s
+  CANCELLED: 'cancelled',
+};
+
+// Cómo paga el pasajero
+export const PAYMENT_METHODS = {
+  CASH: 'cash',
+  MERCADOPAGO: 'mercadopago',
+};
+
+export const PAYMENT_METHOD_LABELS = {
+  cash: 'Efectivo',
+  mercadopago: 'Mercado Pago',
+};
+
+// Segundos que tiene el conductor para aceptar una solicitud
+export const REQUEST_TIMEOUT_SECONDS = 15;
