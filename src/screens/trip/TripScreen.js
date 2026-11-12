@@ -107,7 +107,7 @@ export default function TripScreen() {
     setSaving(true);
     try {
       // Distancia y duración del recorrido (ruta de OSRM del origen al destino)
-      await completeTrip(trip, { distanceKm: route.distanceKm, durationMin: route.durationMin });
+      await completeTrip(trip, { distanceKm: route.distanceKm, durationMin: route.durationMin, route: route.coordinates });
     } finally {
       setSaving(false);
     };

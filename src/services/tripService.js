@@ -91,7 +91,18 @@ export const updateTripStatus = async (tripId, status, extra = {}) => {
 };
 
 // Finaliza el viaje: calcula tarifa, comisión y ganancia con calculateFare y las guarda
-export const completeTrip = async (trip, { distanceKm, durationMin }) => {
+// Reduce la ruta a máximo 100 puntos { lat, lng } (un documento de Firestore no debe ser muy grande)
+// AI-assisted: see docs/AI_LOG.md #10 (ruta guardada para el detalle del historial)
+const simplifyRoute = (coordinates) => {
+  if (!coordinates?.length) return [];
+  const step = Math.max(1, Math.ceil(coordinates.length / 100));
+  const points = coordinates.filter((_, index) => index % step === 0);
+  points.push(coordinates[coordinates.length - 1]); // siempre incluye el destino
+  return points.map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude }));
+};
+
+// route: puntos de la ruta (se guardan para dibujarla después en el detalle del historial)
+export const completeTrip = async (trip, { distanceKm, durationMin, route = [] }) => {
   // La comisión vigente (20 %) sale de config/pricing.js y queda guardada en el viaje
   const result = calculateFare({ distanceKm, durationMin, category: trip.category });
   await updateDoc(doc(db, TRIPS, trip.id), {
@@ -100,6 +111,7 @@ export const completeTrip = async (trip, { distanceKm, durationMin }) => {
     durationMin,
     ...result, // fare, commission, tip, driverEarnings, commissionRate
     paymentStatus: 'pending',
+    route: simplifyRoute(route),
     completedAt: new Date(),
   });
   return result;

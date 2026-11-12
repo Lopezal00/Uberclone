@@ -8,8 +8,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import MainDrawer from './MainDrawer';
 import RegisterTabs from './RegisterTabs';
-import { useDriverSession } from '../context/DriverSessionContext';;
+import { useDriverSession } from '../context/DriverSessionContext';
 import PendingApprovalScreen from '../screens/PendingApprovalScreen';
+import TripDetailScreen from '../screens/main/TripDetailScreen';
 import PaymentScreen from '../screens/trip/PaymentScreen';
 import TripScreen from '../screens/trip/TripScreen';
 import WelcomeScreen from '../screens/WelcomeScreens';
@@ -60,6 +61,8 @@ export default function RootStack() {
         component={PaymentScreen}
         options={{ title: 'Cobro', headerBackVisible: false, gestureEnabled: false }}
       />
+      {/* AI-assisted: see docs/AI_LOG.md #10. Detalle de un viaje del historial */}
+      <Stack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Detalle del viaje', headerBackTitle: 'Historial' }} />
     </Stack.Navigator>
   );
 };

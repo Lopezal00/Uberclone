@@ -59,6 +59,8 @@ export const simulatePassengerRequest = async ({ driverLocation, category }) => 
     estimatedDurationMin: route.durationMin,
     estimatedFare: estimate.fare,
     estimatedEarnings: estimate.driverEarnings,
+    // Calificación del pasajero de prueba, de 4,0 a 5,0 (se ve en el detalle del historial)
+    rating: Math.round((4 + Math.random()) * 10) / 10,
     isSimulated: true,
   });
 };
